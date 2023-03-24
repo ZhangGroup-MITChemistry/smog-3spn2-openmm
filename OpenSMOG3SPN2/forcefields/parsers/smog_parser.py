@@ -53,7 +53,7 @@ class SMOGParser(object):
         assert ((self.atoms['resname'].isin(_amino_acids)).all() and self.atoms['name'].eq('CA').all())
         if default_parse:
             print('Parse configuration with default settings.')
-            self.parse_config()
+            self.parse_mol()
 
     @classmethod
     def from_atomistic_pdb(cls, atomistic_pdb, ca_pdb, write_TER=False, default_parse=True):
@@ -113,12 +113,12 @@ class SMOGParser(object):
         exclusions = np.array(sorted(exclusions))
         self.exclusions = pd.DataFrame(exclusions, columns=['a1', 'a2']).drop_duplicates(ignore_index=True)
         
-    def parse_config(self, get_native_pairs=True, frame=0, radius=0.1, bonded_radius=0.05, cutoff=0.6, box=None, 
-                     use_pbc=False, exclude12=True, exclude13=True, exclude14=True, exclude_native_pairs=True, 
-                     mass_dict=_smog_amino_acid_mass_dict, charge_dict=_smog_amino_acid_charge_dict, 
-                     bonded_energy_scale=2.5):
+    def parse_mol(self, get_native_pairs=True, frame=0, radius=0.1, bonded_radius=0.05, cutoff=0.6, box=None, 
+                  use_pbc=False, exclude12=True, exclude13=True, exclude14=True, exclude_native_pairs=True, 
+                  mass_dict=_smog_amino_acid_mass_dict, charge_dict=_smog_amino_acid_charge_dict, 
+                  bonded_energy_scale=2.5):
         '''
-        Parse configuration.
+        Parse molecule.
         
         Parameters
         ----------

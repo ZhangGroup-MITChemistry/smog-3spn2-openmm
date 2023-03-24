@@ -1,0 +1,10 @@
+job uses node node463
+LAMMPS (5 Nov 2016)
+Running on 1 partitions of processors
+dcdplugin) detected standard 32-bit DCD file of native endianness
+dcdplugin) CHARMM format DCD file (also NAMD 2.1 and later)
+getting bdna/curv dists!
+getting bdna/curv dists!
+simulation finished
+Submitted batch job 45808143
+job done

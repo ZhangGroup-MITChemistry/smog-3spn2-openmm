@@ -1,3 +1,6 @@
 __pycache__/
+slurm-output/
 
 **/*.dcd
+**/test.ipynb
+
