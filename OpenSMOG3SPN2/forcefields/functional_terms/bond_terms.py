@@ -66,6 +66,20 @@ def native_pair_12_10_term(df_native_pairs, use_pbc, force_group=4):
     return bonds
 
 
+def class2_bond_term(df_bonds, use_pbc, force_group=1):
+    bonds = mm.CustomBondForce('k_bond_2*(r-r0)^2+k_bond_3*(r-r0)^3+k_bond_4*(r-r0)^4')
+    bonds.addPerBondParameter('r0')
+    bonds.addPerBondParameter('k_bond_2')
+    bonds.addPerBondParameter('k_bond_3')
+    bonds.addPerBondParameter('k_bond_4')
+    for i, row in df_bonds.iterrows():
+        a1 = int(row['a1'])
+        a2 = int(row['a2'])
+        parameters = row[['r0', 'k_bond_2', 'k_bond_3', 'k_bond_4']].tolist()
+        bonds.addBond(a1, a2, parameters)
+    bonds.setUsesPeriodicBoundaryConditions(use_pbc)
+    bonds.setForceGroup(force_group)
+    return bonds
 
 
 

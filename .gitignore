@@ -1,5 +1,6 @@
 __pycache__/
 slurm-output/
+my-tests/
 
 **/*.dcd
 **/test.ipynb

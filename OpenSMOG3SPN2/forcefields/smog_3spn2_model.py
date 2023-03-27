@@ -26,7 +26,8 @@ class SMOG3SPN2Model(CGModel):
         Initialize. 
         '''
         self.atoms = None
-        self.bonded_attr_names = ['protein_bonds', 'protein_angles', 'protein_dihedrals', 'native_pairs', 'exclusions']
+        self.bonded_attr_names = ['protein_bonds', 'protein_angles', 'protein_dihedrals', 'native_pairs', 
+                                  'dna_bonds', 'dna_angles', 'dna_stackings', 'dna_dihedrals', 'exclusions']
 
     def add_protein_bonds(self, force_group=1):
         '''
@@ -34,7 +35,6 @@ class SMOG3SPN2Model(CGModel):
         
         Parameters
         ----------
-        
         force_group : int
             Force group. 
         
@@ -50,7 +50,6 @@ class SMOG3SPN2Model(CGModel):
         
         Parameters
         ----------
-        
         force_group : int
             Force group. 
         
@@ -66,7 +65,6 @@ class SMOG3SPN2Model(CGModel):
         
         Parameters
         ----------
-        
         force_group : int
             Force group. 
         
@@ -82,7 +80,6 @@ class SMOG3SPN2Model(CGModel):
         
         Parameters
         ----------
-        
         force_group : int
             Force group.
         
@@ -91,5 +88,67 @@ class SMOG3SPN2Model(CGModel):
             print('Add native pairs.')
             force = functional_terms.native_pair_gaussian_term(self.native_pairs, self.use_pbc, force_group)
             self.system.addForce(force)
+    
+    def add_dna_bonds(self, force_group=5):
+        '''
+        Add DNA bonds.
+        
+        Parameters
+        ----------
+        force_group : int
+            Force group.
+        
+        '''
+        if hasattr(self, 'dna_bonds'):
+            print('Add DNA bonds.')
+            force = functional_terms.class2_bond_term(self.dna_bonds, self.use_pbc, force_group)
+            self.system.addForce(force)
+        
+    def add_dna_angles(self, force_group=6):
+        '''
+        Add DNA angles. 
+        
+        Parameters
+        ----------
+        force_group : int
+            Force group.
+        
+        '''
+        if hasattr(self, 'dna_angles'):
+            print('Add DNA angles.')
+            force = functional_terms.harmonic_angle_term(self.dna_angles, self.use_pbc, force_group)
+            self.system.addForce(force)
+        
+    def add_dna_stackings(self, force_group=7):
+        '''
+        Add DNA stackings. 
+        
+        Parameters
+        ----------
+        force_group : int
+            Force group.
+        
+        '''
+        if hasattr(self, 'dna_stackings'):
+            print('Add DNA stackings.')
+            force = functional_terms.dna_3spn2_stacking_term(self.dna_stackings, self.use_pbc, force_group)
+            self.system.addForce(force)
+    
+    def add_dna_dihedrals(self, force_group=8):
+        '''
+        Add DNA dihedrals.
+        
+        Parameters
+        ----------
+        force_group : int
+            Force group.
+        
+        '''
+        if hasattr(self, 'dna_dihedrals'):
+            print('Add DNA dihedrals.')
+            force = functional_terms.dna_3spn2_dihedral_term(self.dna_dihedrals, self.use_pbc, force_group)
+            self.system.addForce(force)
+    
+        
 
     

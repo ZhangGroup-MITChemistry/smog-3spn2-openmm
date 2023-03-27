@@ -1,0 +1,79 @@
+LAMMPS (5 Nov 2016)
+Processor partition = 0
+Reading data file ...
+  orthogonal box = (-1000 -1000 -1000) to (1000 1000 1000)
+  1 by 1 by 1 MPI processor grid
+  reading atoms ...
+  7872 atoms
+  scanning bonds ...
+  2 = max bonds/atom
+  scanning angles ...
+  3 = max angles/atom
+  scanning dihedrals ...
+  2 = max dihedrals/atom
+  reading bonds ...
+  7838 bonds
+  reading angles ...
+  10450 angles
+  reading dihedrals ...
+  8012 dihedrals
+Finding 1-2 1-3 1-4 neighbors ...
+ Special bond factors lj:   0          0          0         
+ Special bond factors coul: 0          0          0         
+  3 = max # of 1-2 neighbors
+  4 = max # of 1-3 neighbors
+  6 = max # of 1-4 neighbors
+  9 = max # of special neighbors
+Read 9357 (0/0/0/9357) interacting pairs from /nobackup1c/users/smliu/test-smog-3spn2-openmm/lammps-tetra-nucl-nrl-172/multi_nucleo-v1.0-172-4-seq-1zbb/single_nucleo/post_processing/prot_list_files/ca_pair_list.txt
+Balancing ...
+Neighbor list info ...
+  3 neighbor list requests
+  update every 1 steps, delay 10 steps, check yes
+  max neighbors/atom: 5000, page size: 100000
+  master list distance cutoff = 55
+  ghost atom cutoff = 55
+  binsize = 27.5, bins = 73 73 73
+Dump reader uses molfile plugin: CHARMM,NAMD,XPLOR DCD Trajectory v1.11 by Axel Kohlmeyer, Justin Gullingsrud, John Stone
+WARNING: No fixes defined, atoms won't move (../verlet.cpp:55)
+Memory usage per processor = 7.15478 Mbytes
+Step PotEng v_ebp v_ecstk v_eexcl v_dna_ecoul v_nbp c_e_bonds[1] c_e_bonds[2] c_e_angles[1] c_e_angles[2] c_e_angles[3] c_e_dihedrals[1] c_e_dihedrals[2] c_e_sbm_pair c_e_lj_debye c_e_lj_debye_vdwl c_e_lj_debye_coul v_e_all_vdwl v_e_all_coul 
+       0 3.9657127e+09   -1548.8176   -372.22241    181.25203    245.87243          365    4472.4623    3.8650842     1468.856    10002.377   0.11517506   -3165.9354  0.012913288   -5591.0056 3.965707e+09 3.9657076e+09   -609.53021 3.9657078e+09   -363.65778 
+       1    53555.587   -1162.8874   -427.70016    47.324868    228.41771          448    25492.968    22036.627    1990.2193    11938.773    827.43055   -3293.5735    65.570312   -5578.0507    1390.4688    2032.6047   -642.13586    2079.9295   -413.71815 
+       2     53539.69   -1173.3218   -431.49552    49.129114    233.72415          463    25508.747    22037.207     1994.634    11920.071    817.62174   -3279.0729    65.570289   -5578.0507    1374.9264    2014.1628   -639.23633    2063.2919   -405.51218 
+       3    53548.212   -1177.8867      -428.58    46.910001    233.00658          465    25500.367    22052.744    2002.6821    11915.861    834.01941   -3290.9282    65.570307   -5578.0507    1372.4963    2020.8683   -648.37192    2067.7783   -415.36533 
+       4    53604.794   -1137.7051   -419.46422    48.517595    228.00975          433    25505.631    22016.747     2016.707    11952.071    813.94026   -3296.6704    65.570231   -5578.0507    1389.4906    2028.1747   -638.68408    2076.6923   -410.67433 
+       5    53616.148   -1144.2852   -427.72731    46.862459    227.54617          445    25504.183    22040.172    2002.3073    11955.931    817.96412   -3282.7383    65.570275   -5578.0507    1388.4124    2017.2439   -628.83152    2064.1064   -401.28535 
+       6    53584.388    -1176.675   -437.67813    48.219344    222.59068          455    25507.381     22040.15    2006.5576    11936.486    831.71101   -3265.8034    65.570274   -5578.0507    1383.9292    2021.2157   -637.28641     2069.435   -414.69574 
+       7    53669.121   -1154.6077   -423.53361    47.134789    223.33292          455    25505.778    22071.208    1998.7823    11970.267     827.1414   -3281.7609    65.570256   -5578.0506    1397.8596     2012.095   -614.23532    2059.2297    -390.9024 
+       8    53615.188   -1166.2321   -422.90307    48.792229    223.46577          452     25496.98    22053.531    1992.2202    11987.468    818.23748   -3285.3805    65.570278   -5578.0507    1381.4896    2023.9586   -642.46902    2072.7508   -419.00325 
+       9    53537.145    -1150.017   -425.74036    45.903469    229.55186          445    25515.448    22061.417    1985.4103    11917.158    795.16422   -3296.5428    65.570276   -5578.0507    1371.8724    2020.4855   -648.61314     2066.389   -419.06128 
+      10     53569.81    -1148.649    -425.2833     47.01163    222.75715          446    25513.876    22042.604    1993.4759    11927.421    796.38908   -3284.4222     65.57026   -5578.0507    1397.1105    2025.2145   -628.10398    2072.2261   -405.34683 
+Loop time of 1.67611 on 1 procs for 11 steps with 7872 atoms
+
+Performance: 0.567 ns/day, 42.326 hours/ns, 6.563 timesteps/s
+98.9% CPU use with 1 MPI tasks x no OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 0          | 0          | 0          |   0.0 |  0.00
+Bond    | 0          | 0          | 0          |   0.0 |  0.00
+Neigh   | 0          | 0          | 0          |   0.0 |  0.00
+Comm    | 0          | 0          | 0          |   0.0 |  0.00
+Output  | 0          | 0          | 0          |   0.0 |  0.00
+Modify  | 0          | 0          | 0          |   0.0 |  0.00
+Other   |            | 1.676      |            |       |100.00
+
+Nlocal:    7872 ave 7872 max 7872 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:    0 ave 0 max 0 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:    2.4492e+06 ave 2.4492e+06 max 2.4492e+06 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 2449204
+Ave neighs/atom = 311.129
+Ave special neighs/atom = 6.61992
+Neighbor list builds = 0
+Dangerous builds = 0
+Total wall time: 0:00:01
