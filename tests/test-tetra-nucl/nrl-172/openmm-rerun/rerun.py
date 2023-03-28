@@ -15,6 +15,7 @@ from OpenSMOG3SPN2.utils import helper_functions, chromatin_helper_functions
 
 n_nucl = 4
 nrl = 172
+platform_name = sys.argv[1]
 tetra_nucl = SMOG3SPN2Model()
 for i in range(n_nucl):
     histone_i_parser = SMOGParser.from_atomistic_pdb(f'../pdb-files/histone_{i}.pdb', f'histone_{i}_CA.pdb', 
@@ -49,29 +50,38 @@ tetra_nucl.add_dna_bonds(force_group=5)
 tetra_nucl.add_dna_angles(force_group=6)
 tetra_nucl.add_dna_stackings(force_group=7)
 tetra_nucl.add_dna_dihedrals(force_group=8)
-tetra_nucl.save_system('system.xml')
+tetra_nucl.add_dna_base_pairs(force_group=9)
+tetra_nucl.add_dna_cross_stackings(force_group=10)
+#tetra_nucl.save_system('system.xml')
 
 temperature = 300*unit.kelvin
 friction_coeff = 0.01/unit.picosecond
 timestep = 10*unit.femtosecond
 integrator = mm.LangevinMiddleIntegrator(temperature, friction_coeff, timestep)
-tetra_nucl.set_simulation(integrator, platform_name='CPU', init_coord=init_coord)
+tetra_nucl.set_simulation(integrator, platform_name=platform_name, init_coord=init_coord)
 simulation = tetra_nucl.simulation
 
 dcd = '../lammps-rerun/traj.dcd'
 traj = mdtraj.load_dcd(dcd, top='cg_chromatin.pdb')
 n_frames = traj.n_frames
-df_energies = pd.DataFrame(columns=['protein bond', 'protein angle', 'protein dihedral', 'native pair', 
-                                    'dna bond', 'dna angle', 'dna stacking', 'dna dihedrals'])
+columns = ['protein bond', 'protein angle', 'protein dihedral', 'native pair', 'dna bond', 
+           'dna angle', 'dna stacking', 'dna dihedrals', 'dna base pairs', 'dna cross stackings']
+df_energies_kj = pd.DataFrame(columns=columns)
+df_energies_kcal = pd.DataFrame(columns=columns)
 for i in range(1, n_frames):
     # since lammps gives strange results for the 0th snapshot, we do not compute energy for that one
     simulation.context.setPositions(traj.xyz[i])
-    row = []
-    for j in range(1, 9):
+    row_kj, row_kcal = [], []
+    for j in range(1, 11):
         state = simulation.context.getState(getEnergy=True, groups={j})
         energy = state.getPotentialEnergy().value_in_unit(unit.kilojoule_per_mole)
-        row.append(energy)
-    df_energies.loc[len(df_energies.index)] = row
+        row_kj.append(energy)
+        energy = state.getPotentialEnergy().value_in_unit(unit.kilocalorie_per_mole)
+        row_kcal.append(energy)
+    df_energies_kj.loc[len(df_energies_kj.index)] = row_kj
+    df_energies_kcal.loc[len(df_energies_kcal.index)] = row_kcal
 
-df_energies.round(2).to_csv('openmm_energy_kj.csv', index=False)
-    
+df_energies_kj.round(6).to_csv(f'openmm_energy_kj_{platform_name}.csv', index=False)
+df_energies_kcal.round(6).to_csv(f'openmm_energy_kcal_{platform_name}.csv', index=False)
+
+

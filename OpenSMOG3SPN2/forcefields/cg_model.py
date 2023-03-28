@@ -4,7 +4,7 @@ import simtk.openmm as mm
 import simtk.openmm.app as app
 import simtk.unit as unit
 from openmmplumed import PlumedForce
-from .rigid import createRigidBodies
+from OpenSMOG3SPN2.forcefields.rigid import createRigidBodies
 import OpenSMOG3SPN2.utils.helper_functions as helper_functions
 import sys
 import os

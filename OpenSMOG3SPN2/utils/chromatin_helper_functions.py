@@ -22,7 +22,7 @@ _n_CA_atoms_per_histone = 974
 
 def remove_histone_tail_dihedrals(df_dihedrals):
     '''
-    Remove histone tail dihedral potentials within histone tails. 
+    Remove histone tail dihedral potentials. 
     A dihedral potential is removed if at least one atom involved is within histone tail. 
     
     Parameters
@@ -48,5 +48,31 @@ def remove_histone_tail_dihedrals(df_dihedrals):
             new_df_dihedrals.loc[len(new_df_dihedrals.index)] = row
     return new_df_dihedrals
 
+
+def remove_histone_tail_native_pairs(df_native_pairs):
+    '''
+    Remove histone tail native pair potentials. 
+    A native pair potential is removed if at least one atom involved is within histone tail. 
+    
+    Parameters
+    ----------
+    df_native_pairs : pd.DataFrame
+        Native pair potential. 
+        This should only include histones. 
+        Each histone includes 974 CA atoms, and there should be 974*n CG atoms in all (n is the number of histones). 
+    
+    Returns
+    -------
+    new_df_native_pairs : pd.DataFrame
+        New native pair potential.
+    
+    '''
+    new_df_native_pairs = pd.DataFrame(columns=df_native_pairs.columns)
+    for i, row in df_native_pairs.iterrows():
+        a1 = int(row['a1']) % _n_CA_atoms_per_histone
+        a2 = int(row['a2']) % _n_CA_atoms_per_histone
+        if not any(x in _histone_tail_atoms for x in [a1, a2]):
+            new_df_native_pairs.loc[len(new_df_native_pairs.index)] = row
+    return new_df_native_pairs
 
 

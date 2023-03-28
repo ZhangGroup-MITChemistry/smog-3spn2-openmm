@@ -5,4 +5,5 @@ cg_chromatin.pdb
 temp*
 ref_frames.dat
 system.xml
+run.slurm
 

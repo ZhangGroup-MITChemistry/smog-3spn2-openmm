@@ -4,14 +4,12 @@ import simtk.openmm as mm
 import simtk.openmm.app as app
 import simtk.unit as unit
 from OpenSMOG3SPN2.utils import helper_functions
-import configparser
+from OpenSMOG3SPN2.forcefields.parameters.mixin_3spn2_config_parser import Mixin3SPN2ConfigParser
 import subprocess
 import sys
 import os
 
 __location__ = os.path.dirname(os.path.abspath(__file__))
-
-dna_3SPN2_conf = f'{__location__}/../parameters/3SPN2.conf'
 
 _atom_masses = {"H": 1.00794, "C": 12.0107, "N": 14.0067, "O": 15.9994, "P": 30.973762}
 
@@ -26,7 +24,7 @@ _CG_map = {"O5\'": 'P', "C5\'": 'S', "C4\'": 'S', "O4\'": 'S', "C3\'": 'S', "O3\
            'H22': 'B', 'H3': 'B', 'H71': 'B', 'H72': 'B', 'H73': 'B', 'H6': 'B', 'H41': 'B',
            'H42': 'B', 'H5': 'B', "HO3'": 'P'}
 
-_dna_residues = ['DA', 'DG', 'DC', 'DT']
+_nucleotides = ['DA', 'DT', 'DC', 'DG']
 
 _WC_pair_dict = {'A': 'T', 'T': 'A', 'C': 'G', 'G': 'C'}
 
@@ -42,7 +40,7 @@ Most code is adapted from the original Open3SPN2.
 '''
 
 
-class DNA3SPN2Parser():
+class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
     '''
     DNA 3SPN2 parser. 
     '''
@@ -51,71 +49,6 @@ class DNA3SPN2Parser():
         Initialize. 
         '''
         pass
-    
-    def parse_config_file(self, config_file=dna_3SPN2_conf):
-        '''
-        Parse configuration file. The parameters are loaded as pandas dataframes. 
-        Importantly, units in the configuration file 3SPN2.conf are not consistent. 
-        This method also converts the units to consistent ones. 
-        '''
-        
-        def parse_row(row):
-            '''
-            Parse one row from the configuration. 
-            '''
-            values = row.split('#')[0].split() # remove comments
-            for i in range(len(values)):
-                values[i] = values[i].strip()
-                try: 
-                    x = int(values[i])
-                except ValueError:
-                    try:
-                        x = float(values[i])
-                    except ValueError:
-                        x = values[i]
-                values[i] = x
-            return values
-        
-        config = configparser.ConfigParser()
-        config.read(config_file, encoding='utf-8')
-        self.config = {}
-        for i in config.sections():
-            data = []
-            for j in config[i]:
-                if j == 'name':
-                    columns = parse_row(config[i][j])
-                elif len(j) > 3 and j[:3] == 'row':
-                    data += [parse_row(config[i][j])]
-            self.config[i] = pd.DataFrame(data, columns=columns)
-        
-        self.particle_definition = self.config['Particles']
-        self.bond_definition = self.config['Bonds']
-        self.angle_definition = self.config['Harmonic Angles']
-        self.dihedral_definition = self.config['Dihedrals']
-        self.stacking_definition = self.config['Base Stackings']
-        self.pair_definition = self.config['Base Pairs']
-        self.cross_definition = self.config['Cross Stackings']
-        
-        # fix units and item names to follow the convention
-        # units in 3SPN2.conf are not consistent, and we convert them to consistent units
-        self.bond_definition = self.bond_definition.rename(columns={'Kb2': 'k_bond_2', 
-                                                                    'Kb3': 'k_bond_3', 
-                                                                    'Kb4': 'k_bond_4'})
-        self.angle_definition['k_angle'] = self.angle_definition['epsilon']*2
-        self.angle_definition = self.angle_definition.rename(columns={'t0': 'theta0'})
-        self.angle_definition['theta0'] *= _degree_to_rad
-        self.stacking_definition['epsilon'] *= _kcal_to_kj
-        self.stacking_definition['sigma'] *= _angstrom_to_nanometer
-        self.stacking_definition = self.stacking_definition.rename(columns={'t0': 'theta0'})
-        self.stacking_definition['theta0'] *= _degree_to_rad
-        self.stacking_definition['alpha'] /= _angstrom_to_nanometer # alpha has unit 1/length
-        self.dihedral_definition['K_dihedral'] *= _kcal_to_kj
-        self.dihedral_definition['K_gaussian'] *= _kcal_to_kj
-        self.dihedral_definition = self.dihedral_definition.rename(columns={'t0': 'theta0'})
-        self.dihedral_definition['theta0'] *= _degree_to_rad
-        
-        
-        
     
     def build_x3dna_template(self, temp_name='temp'):
         '''
@@ -410,14 +343,6 @@ class DNA3SPN2Parser():
             m1 = np.cross(n1, v2) # n1 is orthogonal to v2, n1 and v2 are normalized, so m1 is normalized
             theta = np.arctan2(np.sum(m1*n2, axis=1), np.sum(n1*n2, axis=1)) # dihedral
             self.dna_dihedrals['theta0'] = -1*theta
-        
-            
-            
-        
-            
-        
-        
-    
     
     @staticmethod
     def aa_to_cg(aa_atoms, PSB_order=True):
@@ -426,6 +351,7 @@ class DNA3SPN2Parser():
         Both input and output structures are saved as pandas dataframe. 
         Notably, this function gives each residue in the output CG model a unique resSeq (index starts from 0). 
         Using unique resSeq can be helpful when comparing with x3dna built template as chainID may be different. 
+        This code is long and specific to 3SPN2 model, so we put it here instead of in helper_functions.py. 
         
         Parameters
         ----------
@@ -434,9 +360,6 @@ class DNA3SPN2Parser():
         
         PSB_order : bool
             Whether to ensure CG atom order in each nucleotide is P-S-B. 
-        
-        unique_resSeq : bool
-            Whether to assign a unique resSeq for each residue. 
         
         Returns
         -------
@@ -449,7 +372,7 @@ class DNA3SPN2Parser():
                    'x', 'y', 'z', 'occupancy', 'tempFactor',
                    'element', 'charge', 'type']
         temp = aa_atoms.copy()
-        temp = temp[temp['resname'].isin(_dna_residues)] # select DNA
+        temp = temp[temp['resname'].isin(_nucleotides)] # select DNA
         temp['group'] = temp['name'].replace(_CG_map) # assign each atom to phosphate, sugar, or base
         temp = temp[temp['group'].isin(['P', 'S', 'B'])]
         
@@ -476,7 +399,7 @@ class DNA3SPN2Parser():
         coord = cg_atoms[['x', 'y', 'z']].to_numpy()
         weight = cg_atoms['mass'].to_numpy()
         cg_atoms[['x', 'y', 'z']] = (coord.T/weight).T
-
+        
         # Set pdb columns
         cg_atoms.loc[:, 'recname'] = 'ATOM'
         cg_atoms.loc[:, 'name'] = cg_atoms['group']
@@ -543,7 +466,7 @@ class DNA3SPN2Parser():
             A list including multiple strings. Each string is the sequence of one chain. 
         
         '''
-        cg_atoms = cg_atoms[cg_atoms['resname'].isin(_dna_residues)].copy()
+        cg_atoms = cg_atoms[cg_atoms['resname'].isin(_nucleotides)].copy()
         sequence_list = []
         for c, chain in cg_atoms.groupby('chainID'):
             sequence_c = ''
@@ -598,7 +521,7 @@ class DNA3SPN2Parser():
             DNA CG structure with the new sequence. 
         
         '''
-        new_cg_atoms = cg_atoms[cg_atoms['resname'].isin(_dna_residues)].copy()
+        new_cg_atoms = cg_atoms[cg_atoms['resname'].isin(_nucleotides)].copy()
         # ensure the new sequence has correct length
         assert len(cg_atoms[cg_atoms['name'].isin(['A', 'T', 'C', 'G'])]) == len(sequence)
         new_cg_atoms.loc[cg_atoms['name'].isin(['A', 'T', 'C', 'G']), 'name'] = [x for x in sequence]
@@ -617,6 +540,7 @@ class DNA3SPN2Parser():
                            temp_name='temp'):
         '''
         Create object from atomistic pdb file. 
+        Ensure each chain in input pdb_file has unique chainID. 
         If a new sequence is provided, then the CG DNA topology is from input pdb file, but using the new sequence. 
         
         Parameters

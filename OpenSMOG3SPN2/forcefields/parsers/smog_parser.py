@@ -210,7 +210,6 @@ class SMOGParser(object):
             self.native_pairs.loc[:, 'epsilon_G'] = 1.0*bonded_energy_scale
             self.native_pairs.loc[:, 'sigma_G'] = 0.05
             self.native_pairs.loc[:, 'alpha_G'] = 1.6777216e-5*bonded_energy_scale
-            
         # set exclusions
         self.parse_exclusions(exclude12, exclude13, exclude14, exclude_native_pairs) 
         # set mass and charge
