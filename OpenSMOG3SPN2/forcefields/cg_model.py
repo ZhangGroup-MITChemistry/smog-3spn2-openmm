@@ -63,7 +63,7 @@ class CGModel(object):
                     else:
                         setattr(self, each_attr_name, new_attr)
     
-    def atoms_to_pdb(self, cg_pdb):
+    def atoms_to_pdb(self, cg_pdb, reset_serial=True):
         '''
         Save atoms to pdb as topology will be read from the pdb file.
         PDB file is required for OpenMM simulation.
@@ -73,10 +73,15 @@ class CGModel(object):
         cg_pdb : str
             Output path for CG PDB file.
         
+        reset_serial : bool
+            Reset serial to 1, 2, ...
+        
         '''
         # do not write charge due to pdb space limit
         atoms = self.atoms.copy()
         atoms.loc[:, 'charge'] = ''
+        if reset_serial:
+            atoms['serial'] = list(range(1, len(atoms.index) + 1))
         helper_functions.write_pdb(atoms, cg_pdb)
     
     def create_system(self, top, use_pbc=True, box_a=500, box_b=500, box_c=500, remove_cmmotion=True):

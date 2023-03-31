@@ -59,9 +59,14 @@ class Mixin3SPN2ConfigParser(object):
         self.stacking_definition = self.config['Base Stackings']
         self.pair_definition = self.config['Base Pairs']
         self.cross_definition = self.config['Cross Stackings']
+        self.protein_dna_particle_definition = self.config['Protein-DNA particles']
         
         # fix units and item names to follow the convention
         # units in 3SPN2.conf are not consistent, and we convert them to consistent units
+        # particle definition
+        self.particle_definition['epsilon'] *= _kcal_to_kj
+        self.particle_definition = self.particle_definition.rename(columns={'radius': 'sigma'})
+        self.particle_definition['sigma'] *= _angstrom_to_nanometer
         # bond definition
         self.bond_definition = self.bond_definition.rename(columns={'Kb2': 'k_bond_2', 
                                                                     'Kb3': 'k_bond_3', 
@@ -92,7 +97,10 @@ class Mixin3SPN2ConfigParser(object):
         self.cross_definition[['eps_cs1', 'eps_cs2']] *= _kcal_to_kj
         self.cross_definition[['alpha_cs1', 'alpha_cs2']] /= _angstrom_to_nanometer
         self.cross_definition[['Sigma_1', 'Sigma_2']] *= _angstrom_to_nanometer
+        # protein-DNA particle definition (parameters for protein-DNA nonbonded interactions)
+        self.protein_dna_particle_definition['epsilon'] *= _kcal_to_kj
+        self.protein_dna_particle_definition = self.protein_dna_particle_definition.rename(columns={'radius': 'sigma'})
+        self.protein_dna_particle_definition[['sigma', 'cutoff']] *= _angstrom_to_nanometer
         
-        
-        
-        
+
+

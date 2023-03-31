@@ -26,25 +26,31 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
     A class for SMOG+3SPN2 model. 
     To ensure this model works properly, please ensure two neighboring ssDNA chains do not share same chainID. 
     '''
-    def __init__(self, dna_type='B_curved', default_parse_config=True):
+    def __init__(self, dna_type='B_curved', OpenCLPatch=True, default_parse_config=True):
         '''
         Initialize. 
         
         Parameters
         ----------
-        default_parse_config : bool
-            Whether to parse the default 3SPN2 configuration file. 
-        
         dna_type : str
             DNA type.
         
+        OpenCLPatch : bool
+            Whether to use OpenCL patch. 
+        
+        default_parse_config : bool
+            Whether to parse the default 3SPN2 configuration file. 
+        
         '''
         self.atoms = None
+        self.dna_exclusions = None
+        self.exclusions = None
         # note we set base pair and cross stacking donors and acceptors as bonded attributes
         self.bonded_attr_names = ['protein_bonds', 'protein_angles', 'protein_dihedrals', 'native_pairs', 
                                   'dna_bonds', 'dna_angles', 'dna_stackings', 'dna_dihedrals', 'base_pair_donor_A', 
-                                  'base_pair_donor_G', 'base_pair_acceptor_C', 'base_pair_acceptor_T', 'exclusions']
+                                  'base_pair_donor_G', 'base_pair_acceptor_C', 'base_pair_acceptor_T', 'protein_exclusions']
         self.dna_type = dna_type
+        self.OpenCLPatch = OpenCLPatch
         if default_parse_config:
             # load parameters
             self.parse_config_file()
@@ -74,37 +80,67 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
                     assert getattr(self, 'dna_type') == getattr(new_mol, 'dna_type')
             else:
                 setattr(self, 'dna_type', getattr(new_mol, 'dna_type'))
+        super().append_mol(new_mol, verbose)
+    
+    def parse_dna_exclusions(self):
+        '''
+        Parse DNA nonbonded interaction exclusions. 
+        Note we parse exclusions here instead of in parser as 3SPN2 involves exclusions between atoms from different chains. 
+        The code should be efficient if there are many DNA chains in the system. 
         
-        new_atoms = new_mol.atoms.copy()
-        if hasattr(self, 'atoms'):
-            if self.atoms is None:
-                add_index = 0
-                self.atoms = new_atoms
-            else:
-                add_index = len(self.atoms.index)
-                self.atoms = pd.concat([self.atoms, new_atoms], ignore_index=True)
-        else:
-            add_index = 0
-            self.atoms = new_atoms
-        for each_attr_name in self.bonded_attr_names:
-            if verbose:
-                print(f'Append attribute: {each_attr_name}. ')
-            if hasattr(new_mol, each_attr_name):
-                if getattr(new_mol, each_attr_name) is not None:
-                    new_attr = getattr(new_mol, each_attr_name).copy()
-                    for each_col in ['a1', 'a2', 'a3', 'a4']:
-                        if each_col in new_attr.columns:
-                            new_attr[each_col] += add_index
-                    if hasattr(self, each_attr_name):
-                        if getattr(self, each_attr_name) is None:
-                            setattr(self, each_attr_name, new_attr)
-                        else:
-                            combined_attr = pd.concat([getattr(self, each_attr_name).copy(), new_attr], 
-                                                      ignore_index=True)
-                            setattr(self, each_attr_name, combined_attr)
-                    else:
-                        setattr(self, each_attr_name, new_attr)
+        '''
+        atoms = self.atoms.copy()
+        atoms['index'] = list(range(len(atoms.index)))
+        dna_atoms = atoms[atoms['resname'].isin(_nucleotides)].copy()
 
+        # set exclusions for atoms from neighboring residues
+        dna_exclusions = []
+        unique_chainIDs = dna_atoms['chainID'].drop_duplicates(keep='first').tolist()
+        for c in unique_chainIDs:
+            dna_atoms_c = dna_atoms[dna_atoms['chainID'] == c].copy()
+            unique_resSeqs = dna_atoms_c['resSeq'].drop_duplicates(keep='first').tolist()
+            for r1 in unique_resSeqs:
+                for r2 in [r1, r1 + 1]:
+                    if r2 in unique_resSeqs:
+                        dna_atoms_c_r1 = dna_atoms_c[dna_atoms_c['resSeq'] == r1]
+                        dna_atoms_c_r2 = dna_atoms_c[dna_atoms_c['resSeq'] == r2]
+                        for a1 in dna_atoms_c_r1['index'].tolist():
+                            for a2 in dna_atoms_c_r2['index'].tolist():
+                                if a1 < a2:
+                                    dna_exclusions.append([a1, a2])
+        
+        if self.OpenCLPatch:
+            # set exclusions between W-C base pairs
+            for k in ['A', 'C']:
+                dna_atoms_1 = dna_atoms[dna_atoms['name'] == k]
+                dna_atoms_2 = dna_atoms[dna_atoms['name'] == _WC_pair_dict[k]]
+                for i in dna_atoms_1['index'].tolist():
+                    for j in dna_atoms_2['index'].tolist():
+                        a1, a2 = i, j
+                        if a1 > a2:
+                            a1, a2 = a2, a1
+                        dna_exclusions.append([a1, a2])
+        
+        if len(dna_exclusions) >= 1:
+            dna_exclusions = pd.DataFrame(np.array(dna_exclusions), columns=['a1', 'a2'])
+            dna_exclusions = dna_exclusions.drop_duplicates(ignore_index=True)
+            self.dna_exclusions = dna_exclusions.sort_values(by=['a1', 'a2'], ignore_index=True)
+        else:
+            self.dna_exclusions = pd.DataFrame(columns=['a1', 'a2'])
+
+    def parse_all_exclusions(self):
+        '''
+        Parse all the exclusions (including protein exclusions and DNA exclusions). 
+        Run this command before adding nonbonded interactions. 
+        '''
+        self.parse_dna_exclusions()
+        if hasattr(self, 'protein_exclusions'):
+            if getattr(self, 'protein_exclusions') is None:
+                self.protein_exclusions = pd.DataFrame(columns=['a1', 'a2'])
+        else:
+            self.protein_exclusions = pd.DataFrame(columns=['a1', 'a2'])
+        self.exclusions = pd.concat([self.protein_exclusions, self.dna_exclusions], ignore_index=True)
+    
     def add_protein_bonds(self, force_group=1):
         '''
         Add protein bonds.
@@ -287,14 +323,14 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
                             force_i.addExclusion(atom1['donor_id'], atom2['acceptor_id'])
             self.system.addForce(force_i)
     
-    def add_dna_cross_stackings(self, cutoff=1.8, OpenCLPatch=True, force_group=10):
+    def add_dna_cross_stackings(self, cutoff=1.8, force_group=10):
         '''
         Add DNA cross stacking potentials. 
         '''
         print('Add DNA cross stackings.')
         cross_definition = self.cross_definition[self.cross_definition['DNA'] == self.dna_type].copy()
-        cross_definition.index = [x for x in zip(cross_definition['Base_d1'], cross_definition['Base_a1'], 
-                                                 cross_definition['Base_a3'])]
+        cross_definition.index = zip(cross_definition['Base_d1'], cross_definition['Base_a1'], 
+                                     cross_definition['Base_a3'])
         atoms = self.atoms.copy()
         # reset chainID to unique numbers so forces can be set properly
         # please ensure in input self.atoms two neighboring chains do not share the same chainID
@@ -357,7 +393,7 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
             acceptor_dict[_WC_pair_dict[a1n]].append(a1) # add force1 acceptor a1
         # set exclusions
         dna_unique_chainIDs = dna_atoms['chainID'].drop_duplicates(keep='first').tolist()
-        if OpenCLPatch:
+        if self.OpenCLPatch:
             max_n = 6
         else:
             max_n = 9
@@ -373,30 +409,36 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
                 for j, atom1 in donors_c.iterrows():
                     for k, atom2 in acceptors_c.iterrows():
                         a1, a2 = atom1['index'], atom2['index']
-                        if (abs(a1 - a2) <= max_n) or ((not OpenCLPatch) and (a1 > a2)):
+                        if (abs(a1 - a2) <= max_n) or ((not self.OpenCLPatch) and (a1 > a2)):
                             force1.addExclusion(atom1['donor_id'], atom2['acceptor_id'])
                             force2.addExclusion(atom2['acceptor_id'], atom1['donor_id'])
             self.system.addForce(force1)
             self.system.addForce(force2)
-
-            
-                    
-            
-            
-            
+    
+    def add_all_vdwl(self, param_PP_MJ_path=f'{__location__}/parameters/pp_MJ.csv', cutoff_PD=1.425*unit.nanometer, 
+                     force_group=11):
+        '''
+        CG atom type 0-19 for amino acids.
+        CG atom type 20-25 for DNA atoms. 
         
-            
-            
-            
-            
-            
-            
-            
-            
+        Parameters
+        ----------
+        param_PP_MJ : str
+            Protein-protein MJ potential parameter file path. 
         
-        
-        
-        
+        '''
+        print('Add all the nonbonded contact interactions.')
+        param_PP_MJ = pd.read_csv(param_PP_MJ_path)
+        force = functional_terms.all_smog_MJ_3spn2_term(self, param_PP_MJ, cutoff_PD, force_group)
+        self.system.addForce(force)
+    
+    def add_all_elec(self, salt_concentration=150*unit.millimolar, temperature=300*unit.kelvin, 
+                     elec_DD_charge_scale=0.6, cutoff_DD=5*unit.nanometer, cutoff_PP_PD=3.141504539*unit.nanometer, 
+                     dielectric_PP_PD=78, force_group=12):
+        print('Add all the electrostatic interactions.')
+        force = functional_terms.all_smog_3spn2_elec_term(self, salt_concentration, temperature, elec_DD_charge_scale, 
+                                                          cutoff_DD, cutoff_PP_PD, dielectric_PP_PD, force_group)
+        self.system.addForce(force)
         
 
     

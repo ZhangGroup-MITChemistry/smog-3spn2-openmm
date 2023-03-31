@@ -112,6 +112,8 @@ class SMOGParser(object):
                 exclusions.append((int(row['a1']), int(row['a2'])))
         exclusions = np.array(sorted(exclusions))
         self.exclusions = pd.DataFrame(exclusions, columns=['a1', 'a2']).drop_duplicates(ignore_index=True)
+        # for using with 3SPN2, also set self.protein_exclusions
+        self.protein_exclusions = self.exclusions.copy()
         
     def parse_mol(self, get_native_pairs=True, frame=0, radius=0.1, bonded_radius=0.05, cutoff=0.6, box=None, 
                   use_pbc=False, exclude12=True, exclude13=True, exclude14=True, exclude_native_pairs=True, 

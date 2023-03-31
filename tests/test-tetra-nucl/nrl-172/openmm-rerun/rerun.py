@@ -35,9 +35,7 @@ target_seq = seq1 + seq2
 
 dna_parser = DNA3SPN2Parser.from_atomistic_pdb('../pdb-files/dna.pdb', new_sequence=target_seq)
 tetra_nucl.append_mol(dna_parser)
-atoms = tetra_nucl.atoms.copy()
-atoms.loc[:, 'charge'] = '' # remove charge due to pdb space limit
-helper_functions.write_pdb(atoms, 'cg_chromatin.pdb')
+tetra_nucl.atoms_to_pdb('cg_chromatin.pdb')
 
 top = app.PDBFile('cg_chromatin.pdb').getTopology()
 init_coord = app.PDBFile('cg_chromatin.pdb').getPositions()
@@ -45,19 +43,24 @@ tetra_nucl.create_system(top)
 tetra_nucl.add_protein_bonds(force_group=1)
 tetra_nucl.add_protein_angles(force_group=2)
 tetra_nucl.add_protein_dihedrals(force_group=3)
-#tetra_nucl.add_native_pairs(force_group=4)
+tetra_nucl.add_native_pairs(force_group=4)
 tetra_nucl.add_dna_bonds(force_group=5)
 tetra_nucl.add_dna_angles(force_group=6)
 tetra_nucl.add_dna_stackings(force_group=7)
 tetra_nucl.add_dna_dihedrals(force_group=8)
 tetra_nucl.add_dna_base_pairs(force_group=9)
 tetra_nucl.add_dna_cross_stackings(force_group=10)
-#tetra_nucl.save_system('system.xml')
+tetra_nucl.parse_all_exclusions()
+tetra_nucl.exclusions.to_csv('exclusions.csv', index=False)
+tetra_nucl.add_all_vdwl(force_group=11)
+tetra_nucl.add_all_elec(force_group=12)
+tetra_nucl.save_system('system.xml')
 
 temperature = 300*unit.kelvin
-friction_coeff = 0.01/unit.picosecond
+#friction_coeff = 0.01/unit.picosecond
 timestep = 10*unit.femtosecond
-integrator = mm.LangevinMiddleIntegrator(temperature, friction_coeff, timestep)
+#integrator = mm.LangevinMiddleIntegrator(temperature, friction_coeff, timestep)
+integrator = mm.NoseHooverIntegrator(temperature, 1/unit.picosecond, timestep)
 tetra_nucl.set_simulation(integrator, platform_name=platform_name, init_coord=init_coord)
 simulation = tetra_nucl.simulation
 
@@ -65,19 +68,21 @@ dcd = '../lammps-rerun/traj.dcd'
 traj = mdtraj.load_dcd(dcd, top='cg_chromatin.pdb')
 n_frames = traj.n_frames
 columns = ['protein bond', 'protein angle', 'protein dihedral', 'native pair', 'dna bond', 
-           'dna angle', 'dna stacking', 'dna dihedrals', 'dna base pairs', 'dna cross stackings']
+           'dna angle', 'dna stacking', 'dna dihedrals', 'dna base pairs', 'dna cross stackings', 
+           'all vdwl', 'all electrostatic']
 df_energies_kj = pd.DataFrame(columns=columns)
 df_energies_kcal = pd.DataFrame(columns=columns)
 for i in range(1, n_frames):
     # since lammps gives strange results for the 0th snapshot, we do not compute energy for that one
     simulation.context.setPositions(traj.xyz[i])
     row_kj, row_kcal = [], []
-    for j in range(1, 11):
+    for j in range(1, 13):
         state = simulation.context.getState(getEnergy=True, groups={j})
         energy = state.getPotentialEnergy().value_in_unit(unit.kilojoule_per_mole)
         row_kj.append(energy)
         energy = state.getPotentialEnergy().value_in_unit(unit.kilocalorie_per_mole)
         row_kcal.append(energy)
+        #print(f'Group {j} energy is {energy} kcal/mol')
     df_energies_kj.loc[len(df_energies_kj.index)] = row_kj
     df_energies_kcal.loc[len(df_energies_kcal.index)] = row_kcal
 

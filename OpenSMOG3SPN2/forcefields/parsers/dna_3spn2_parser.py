@@ -43,6 +43,7 @@ Most code is adapted from the original Open3SPN2.
 class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
     '''
     DNA 3SPN2 parser. 
+    For B-curved DNA, the parser works best for a single strand ssDNA or WC-paired dsDNA. 
     '''
     def __init__(self):
         '''
@@ -170,11 +171,8 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
         template_atoms = template_dna.atoms.copy()
         merged_atoms = pd.merge(original_atoms, template_atoms, on=['resSeq', 'name'], how='left', 
                                 suffixes=['_old', ''])
-        #original_atoms.to_csv('original.csv', index=False)
-        #merged_atoms.to_csv('merged.csv', index=False)
         template_atoms = original_atoms.copy()
         template_atoms[['x', 'y', 'z']] = merged_atoms[['x', 'y', 'z']]
-        #template_atoms.to_csv('template.csv', index=False)
         return template_atoms
     
     def parse_mol(self, template_from_x3dna=True, temp_name='temp'):
