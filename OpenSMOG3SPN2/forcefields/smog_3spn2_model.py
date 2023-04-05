@@ -436,8 +436,9 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
                      elec_DD_charge_scale=0.6, cutoff_DD=5*unit.nanometer, cutoff_PP_PD=3.141504539*unit.nanometer, 
                      dielectric_PP_PD=78, force_group=12):
         print('Add all the electrostatic interactions.')
-        force = functional_terms.all_smog_3spn2_elec_term(self, salt_concentration, temperature, elec_DD_charge_scale, 
-                                                          cutoff_DD, cutoff_PP_PD, dielectric_PP_PD, force_group)
+        force = functional_terms.all_smog_3spn2_elec_term(self, salt_concentration, temperature, 
+                                                          elec_DD_charge_scale, cutoff_DD, cutoff_PP_PD, 
+                                                          dielectric_PP_PD, force_group)
         self.system.addForce(force)
         
 

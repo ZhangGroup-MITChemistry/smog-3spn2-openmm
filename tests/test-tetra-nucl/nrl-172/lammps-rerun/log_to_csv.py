@@ -16,16 +16,19 @@ for i in range(n_lines):
     if len(line_i) >= 4 and line_i[:4] == 'Loop':
         end_line_id = i - 1
 
+columns = ['dna base pair', 'dna cross stacking', 'dna vdwl', 'dna elec', 'dna nbp', 'dna bond', 
+           'protein bond', 'dna stacking', 'dna angle', 'protein angle', 'dna dihedral', 'protein dihedral', 
+           'native pair', 'PD and PP nonbonded', 'PD and PP vdwl', 'PD and PP elec', 'all vdwl', 'all elec']
 data = []
-columns = ['bp', 'cstk', 'excl', 'dna coul', 'nbp', 'dna bond', 'protein bond', 'dna stacking', 
-           'dna angle', 'protein angle', 'dna dihedral', 'protein dihedral', 'native pair', 'lj debye', 
-           'lj debye vdwl', 'lj debye coul', 'all vdwl', 'all coul']
 for i in range(start_line_id, end_line_id + 1):
     values = log_lines[i].split()[2:]
     values = [float(x) for x in values]
     data += [values]
 data = pd.DataFrame(np.array(data), columns=columns)
-data = data.drop(['nbp'], axis=1)
+new_columns = ['protein bond', 'protein angle', 'protein dihedral', 'native pair', 'dna bond',
+               'dna angle', 'dna stacking', 'dna dihedral', 'dna base pair', 'dna cross stacking',
+               'all vdwl', 'all elec']
+data = data[new_columns].copy()
 data.round(2).to_csv('lammps_energy_kcal.csv', index=False)
 
 data.loc[:, data.columns] *= 4.184

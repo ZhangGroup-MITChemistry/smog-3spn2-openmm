@@ -14,13 +14,18 @@ _angstrom_to_nanometer = 0.1
 class Mixin3SPN2ConfigParser(object):
     '''
     Define a class for 3SPN2 configuration file parser. 
+    
     Make this an individual class is convenient for other classes to inherit. 
+    
+    This class can load parameters from 3SPN2.conf and automatically convert the units. 
+    
+    Also this class load all the parameters as pandas dataframes, and it is easy for user to modify the parameters. 
     '''
     def parse_config_file(self, config_file=dna_3SPN2_conf):
         '''
         Parse configuration file. The parameters are loaded as pandas dataframes. 
-        Importantly, units in the configuration file 3SPN2.conf are not consistent. 
-        This method also converts the units to consistent ones. 
+        The method automatically loads parameters from configuration file and convert the units. 
+        The converted units are consistent with the workflow. 
         '''
         
         def parse_row(row):
@@ -42,7 +47,7 @@ class Mixin3SPN2ConfigParser(object):
         
         config = configparser.ConfigParser()
         config.read(config_file, encoding='utf-8')
-        self.config = {}
+        config_3spn = {}
         for i in config.sections():
             data = []
             for j in config[i]:
@@ -50,16 +55,19 @@ class Mixin3SPN2ConfigParser(object):
                     columns = parse_row(config[i][j])
                 elif len(j) > 3 and j[:3] == 'row':
                     data += [parse_row(config[i][j])]
-            self.config[i] = pd.DataFrame(data, columns=columns)
+            config_3spn[i] = pd.DataFrame(data, columns=columns)
         
-        self.particle_definition = self.config['Particles']
-        self.bond_definition = self.config['Bonds']
-        self.angle_definition = self.config['Harmonic Angles']
-        self.dihedral_definition = self.config['Dihedrals']
-        self.stacking_definition = self.config['Base Stackings']
-        self.pair_definition = self.config['Base Pairs']
-        self.cross_definition = self.config['Cross Stackings']
-        self.protein_dna_particle_definition = self.config['Protein-DNA particles']
+        # the loaded parameters are saved in pandas dataframe as attributes
+        self.particle_definition = config_3spn['Particles'].copy()
+        self.bond_definition = config_3spn['Bonds'].copy()
+        self.angle_definition = config_3spn['Harmonic Angles'].copy()
+        self.dihedral_definition = config_3spn['Dihedrals'].copy()
+        self.stacking_definition = config_3spn['Base Stackings'].copy()
+        self.pair_definition = config_3spn['Base Pairs'].copy()
+        self.cross_definition = config_3spn['Cross Stackings'].copy()
+        self.protein_dna_particle_definition = config_3spn['Protein-DNA particles'].copy()
+        self.base_pair_geometry = config_3spn['Base Pair Geometry'].copy()
+        self.base_step_geometry = config_3spn['Base Step Geometry'].copy()
         
         # fix units and item names to follow the convention
         # units in 3SPN2.conf are not consistent, and we convert them to consistent units

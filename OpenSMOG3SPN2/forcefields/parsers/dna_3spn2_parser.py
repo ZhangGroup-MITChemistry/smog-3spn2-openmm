@@ -89,8 +89,8 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
             x3dna_input_sequence = ''.join(sequence_list)
         
         # set parameters
-        pair = self.config['Base Pair Geometry']
-        step = self.config['Base Step Geometry']
+        pair = self.base_pair_geometry.copy()
+        step = self.base_step_geometry.copy()
         pair.index = pair['stea']
         step.index = step['stea'] + step['steb']
         data = []

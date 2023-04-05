@@ -26,6 +26,11 @@ def harmonic_bond_term(df_bonds, use_pbc, force_group=1):
 
 
 def native_pair_gaussian_term(df_native_pairs, use_pbc, force_group=4):
+    '''
+    Native pair term with Gaussian well. 
+    
+    Parameters epsilon_G, sigma_G, alpha_G all have _G to highlight these parameters are used in the native pair potential with Gaussian well. 
+    '''
     bonds = mm.CustomBondForce('''energy;
             energy=(-epsilon_G*G+alpha_G*(1-G)/r^12-offset)*step(cutoff-r);
             offset=-epsilon_G*exp(-18)+alpha_G*(1-exp(-18))/cutoff^12;
