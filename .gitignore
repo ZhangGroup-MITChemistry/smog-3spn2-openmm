@@ -3,4 +3,5 @@ slurm-output/
 my-tests/
 
 **/*.dcd
+**/*.xml
 

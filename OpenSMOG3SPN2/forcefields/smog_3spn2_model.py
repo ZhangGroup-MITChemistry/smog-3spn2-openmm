@@ -47,8 +47,8 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
         self.exclusions = None
         # note we set base pair and cross stacking donors and acceptors as bonded attributes
         self.bonded_attr_names = ['protein_bonds', 'protein_angles', 'protein_dihedrals', 'native_pairs', 
-                                  'dna_bonds', 'dna_angles', 'dna_stackings', 'dna_dihedrals', 'base_pair_donor_A', 
-                                  'base_pair_donor_G', 'base_pair_acceptor_C', 'base_pair_acceptor_T', 'protein_exclusions']
+                                  'dna_bonds', 'dna_angles', 'dna_stackings', 'dna_dihedrals', 'protein_exclusions', 
+                                  'dna_exclusions', 'exclusions']
         self.dna_type = dna_type
         self.OpenCLPatch = OpenCLPatch
         if default_parse_config:
