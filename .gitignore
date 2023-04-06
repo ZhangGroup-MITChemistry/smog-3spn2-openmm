@@ -3,5 +3,4 @@ slurm-output/
 my-tests/
 
 **/*.dcd
-**/test.ipynb
 

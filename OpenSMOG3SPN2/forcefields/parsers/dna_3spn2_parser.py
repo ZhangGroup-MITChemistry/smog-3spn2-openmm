@@ -144,6 +144,7 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
             atom_serial = 1
             for each_line in lines:
                 if each_line[:4] == 'ATOM':
+                    assert len(each_line) >= 12
                     if atom_serial <= 99999:
                         new_line = each_line[:6] + f'{atom_serial:>5}' + each_line[11:]
                         atom_serial += 1

@@ -7,16 +7,12 @@ import simtk.openmm.app as app
 import simtk.unit as unit
 import mdtraj
 
-sys.path.append('../../../..')
+sys.path.append('../../..')
 
 from OpenSMOG3SPN2.forcefields.parsers import SMOGParser, DNA3SPN2Parser
 from OpenSMOG3SPN2.forcefields import SMOG3SPN2Model
 from OpenSMOG3SPN2.utils.helper_functions import get_WC_paired_seq
-
-# import functions to remove dihedrals and native pairs involving histone tail atoms
-# import in two lines instead of one line so the code does not look too long in one line
-from OpenSMOG3SPN2.utils.chromatin_helper_functions import remove_histone_tail_dihedrals
-from OpenSMOG3SPN2.utils.chromatin_helper_functions import remove_histone_tail_native_pairs
+from OpenSMOG3SPN2.utils.chromatin_helper_functions import remove_histone_tail_dihedrals, remove_histone_tail_native_pairs
 
 n_nucl = 4
 nrl = 172
@@ -46,7 +42,22 @@ with open('dna_seq.txt', 'r') as f:
 seq2 = get_WC_paired_seq(seq1)
 target_seq = seq1 + seq2
 
-dna_parser = DNA3SPN2Parser.from_atomistic_pdb('../pdb-files/dna.pdb', new_sequence=target_seq)
+dna_parser = DNA3SPN2Parser.from_atomistic_pdb('../pdb-files/dna.pdb', new_sequence=target_seq, default_parse=False)
+
+# use old geometry parameters
+dna_parser.parse_config_file()
+bs_geometry = dna_parser.base_step_geometry.copy()
+columns = ['twist', 'roll', 'tilt', 'shift', 'slide', 'rise']
+stea_is_T = (bs_geometry['stea'] == 'T')
+steb_is_T = (bs_geometry['steb'] == 'T')
+bs_geometry.loc[stea_is_T & steb_is_T, columns] = [35.31, 0.91, 1.84, 0.05, -0.21, 3.27]
+stea_is_C = (bs_geometry['stea'] == 'C')
+steb_is_G = (bs_geometry['steb'] == 'G')
+bs_geometry.loc[stea_is_C & steb_is_G, columns] = [34.38, 4.29, 0.00, 0.00, 0.57, 3.49]
+dna_parser.base_step_geometry = bs_geometry.copy()
+dna_parser.parse_mol()
+
+tetra_nucl.base_step_geometry = bs_geometry.copy()
 tetra_nucl.append_mol(dna_parser)
 tetra_nucl.atoms_to_pdb('cg_chromatin.pdb')
 

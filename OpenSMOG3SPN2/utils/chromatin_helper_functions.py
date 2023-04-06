@@ -19,6 +19,10 @@ _histone_tail_atoms = np.array(_histone_tail_atoms)
 
 _n_CA_atoms_per_histone = 974
 
+_histone_core_atoms = np.array([x for x in range(_n_CA_atoms_per_histone) if x not in _histone_tail_atoms])
+
+_n_bp_per_nucl = 147
+
 
 def remove_histone_tail_dihedrals(df_dihedrals):
     '''
@@ -75,4 +79,52 @@ def remove_histone_tail_native_pairs(df_native_pairs):
             new_df_native_pairs.loc[len(new_df_native_pairs.index)] = row
     return new_df_native_pairs
 
+
+def get_chromatin_rigid_bodies(n_nucl, nrl, n_rigid_bp_per_nucl=73):
+    '''
+    Get chromatin rigid bodies. 
+    The chromatin should possess uniform linker length without additional linkers on both ends. 
+    
+    Parameters
+    ----------
+    n_nucl : int
+        Nucleosome number. 
+    
+    nrl : int
+        Nucleosome repeat length. 
+    
+    n_flexible_bp_per_nucl : int
+        The number of flexible nucleosomal base pairs for each nucleosome. 
+    
+    '''
+    n_bp = nrl*(n_nucl - 1) + _n_bp_per_nucl
+    assert n_rigid_bp_per_nucl > 0
+    n_CA_atoms = n_nucl*_n_CA_atoms_per_histone
+    n_dna_atoms = 6*n_bp - 2
+    n_atoms = n_CA_atoms + n_dna_atoms
+    bp_id_to_atom_id_dict = {}
+    for i in range(n_bp):
+        bp_id_to_atom_id_dict[i] = []
+        # first ssDNA chain
+        if i == 0:
+            bp_id_to_atom_id_dict[i] += (np.arange(2) + n_CA_atoms).tolist()
+        else:
+            bp_id_to_atom_id_dict[i] += (np.arange(3) + n_CA_atoms + 3*i - 1).tolist()
+        if i == (n_bp - 1):
+            bp_id_to_atom_id_dict[i] += (np.arange(2) + n_atoms - 3*n_bp + 1).tolist()
+        else:
+            bp_id_to_atom_id_dict[i] += (np.arange(3) + n_atoms - 3*i - 3).tolist()
+    rigid_bodies = []
+    for i in range(n_nucl):
+        rigid_bodies.append([])
+        rigid_bodies[i] += (_histone_core_atoms + i*_n_CA_atoms_per_histone).tolist()
+        start_bp_id = int((_n_bp_per_nucl - n_rigid_bp_per_nucl)/2) + i*nrl
+        end_bp_id = start_bp_id + n_rigid_bp_per_nucl - 1
+        for j in range(start_bp_id, end_bp_id + 1):
+            rigid_bodies[i] += bp_id_to_atom_id_dict[j]
+        rigid_bodies[i] = sorted(rigid_bodies[i])
+    return rigid_bodies
+        
+        
+        
 

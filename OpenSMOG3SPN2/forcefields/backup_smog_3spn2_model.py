@@ -23,7 +23,7 @@ _WC_pair_dict = {'A': 'T', 'T': 'A', 'C': 'G', 'G': 'C'}
 
 class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
     '''
-    The class for SMOG+3SPN2 model. 
+    A class for SMOG+3SPN2 model. 
     To ensure this model works properly, please ensure two neighboring ssDNA chains do not share same chainID. 
     '''
     def __init__(self, dna_type='B_curved', OpenCLPatch=True, default_parse_config=True):
@@ -33,7 +33,7 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
         Parameters
         ----------
         dna_type : str
-            DNA type. This is related to force field parameters. 
+            DNA type.
         
         OpenCLPatch : bool
             Whether to use OpenCL patch. 
@@ -59,7 +59,7 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
     def append_mol(self, new_mol, verbose=False):
         '''
         The method can append new molecules by concatenating atoms and bonded interaction information saved in dataframes. 
-        Please ensure two neighboring chains do not share chainID. 
+        Ensure two neighboring chains do not share chainID. 
         
         Parameters
         ----------
@@ -265,8 +265,6 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
         '''
         Add DNA base pair potentials. 
         
-        Please ensure two neighboring chains in self.atoms do not share the same chainID, so that different chains can be distinguished properly. 
-        
         Parameters
         ----------
         cutoff : float or int
@@ -280,6 +278,8 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
         pair_definition = self.pair_definition[self.pair_definition['DNA'] == self.dna_type]
         atoms = self.atoms.copy()
         # reset chainID to unique numbers so forces can be set properly
+        # please ensure in input self.atoms two neighboring chains do not share the same chainID
+        # this is because the method recognizes individual chains by comparing chainIDs of neighboring atoms
         atoms.index = list(range(len(atoms.index)))
         new_chainIDs = []
         c = 0
@@ -289,21 +289,20 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
                     c += 1
             new_chainIDs.append(c)
         atoms['chainID'] = new_chainIDs
+        # change index so we can locate each atom easily
         atoms['index'] = list(range(len(atoms.index)))
-        # originally index is set as tuples of chainID, resSeq, and name
-        # we use multiindex instead, which is more canonical method
-        atoms = atoms.set_index(['chainID', 'resSeq', 'name']) # use multiple columns as index
-        dna_atoms = atoms[atoms['resname'].isin(_nucleotides)].copy()
+        atoms.index = zip(atoms['chainID'], atoms['resSeq'], atoms['name'])
+        dna_atoms = atoms[atoms['resname'].isin(_nucleotides)]
         # find W-C pairs
         # note as we have two types of W-C pairs (A-T and C-G), we need two separate forces
         for i, row in pair_definition.iterrows():
             parameters = [row['torsion'], row['sigma'], row['t1'], row['t2'], row['rang'], 
                           row['epsilon'], row['alpha']]
             base1, base2 = row['Base1'], row['Base2']
-            donors1 = dna_atoms.loc[pd.IndexSlice[:, :, [base1]]].copy()
-            acceptors1 = dna_atoms.loc[pd.IndexSlice[:, :, [base2]]].copy()
-            donors2 = dna_atoms.loc[[(x[0], x[1], 'S') for x in donors1.index]].copy()
-            acceptors2 = dna_atoms.loc[[(x[0], x[1], 'S') for x in acceptors1.index]].copy()
+            donors1 = dna_atoms[dna_atoms['name'] == base1].copy()
+            acceptors1 = dna_atoms[dna_atoms['name'] == base2].copy()
+            donors2 = dna_atoms.loc[[(x[0], x[1], 'S') for x in donors1.index]]
+            acceptors2 = dna_atoms.loc[[(x[0], x[1], 'S') for x in acceptors1.index]]
             force_i = functional_terms.dna_3spn2_base_pair_term(self.use_pbc, cutoff, force_group)
             # add donors and acceptors
             for a1, a2 in zip(donors1['index'].tolist(), donors2['index'].tolist()):
@@ -311,39 +310,31 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
             for a1, a2 in zip(acceptors1['index'].tolist(), acceptors2['index'].tolist()):
                 force_i.addAcceptor(a1, a2, -1)
             # set exclusions
-            # for hbond forces, exclusions are added based on donor id and acceptor id, instead of atom id
+            # for hbond forces, exclusions are added based on donor id and acceptor id
             donors1['donor_id'] = list(range(len(donors1.index)))
             acceptors1['acceptor_id'] = list(range(len(acceptors1.index)))
-            for j in donors1.index:
-                c, r = j[0], j[1]
-                for delta_r in [-2, -1, 1, 2]:
-                    k = (c, r + delta_r, base2)
-                    if k in acceptors1.index:
-                        force_i.addExclusion(int(donors1.loc[j, 'donor_id']), int(acceptors1.loc[k, 'acceptor_id']))
+            dna_unique_chainIDs = dna_atoms['chainID'].drop_duplicates(keep='first').tolist()
+            for c in dna_unique_chainIDs:
+                donors1_c = donors1[donors1['chainID'] == c]
+                acceptors1_c = acceptors1[acceptors1['chainID'] == c]
+                for j, atom1 in donors1_c.iterrows():
+                    for k, atom2 in acceptors1_c.iterrows():
+                        if abs(atom1['resSeq'] - atom2['resSeq']) <= 2:
+                            force_i.addExclusion(atom1['donor_id'], atom2['acceptor_id'])
             self.system.addForce(force_i)
     
     def add_dna_cross_stackings(self, cutoff=1.8, force_group=10):
         '''
         Add DNA cross stacking potentials. 
-        
-        Please ensure two neighboring chains in self.atoms do not share the same chainID, so that different chains can be distinguished properly. 
-        
-        The method should be efficient if OpenCLPatch is True. 
-        
-        Parameters
-        ----------
-        cutoff : float or int
-            Cutoff distance. 
-        
-        force_group : int
-            Force group.
-        
         '''
         print('Add DNA cross stackings.')
         cross_definition = self.cross_definition[self.cross_definition['DNA'] == self.dna_type].copy()
-        cross_definition = cross_definition.set_index(['Base_d1', 'Base_a1', 'Base_a3'])
+        cross_definition.index = zip(cross_definition['Base_d1'], cross_definition['Base_a1'], 
+                                     cross_definition['Base_a3'])
         atoms = self.atoms.copy()
         # reset chainID to unique numbers so forces can be set properly
+        # please ensure in input self.atoms two neighboring chains do not share the same chainID
+        # this is because the method recognizes individual chains by comparing chainIDs of neighboring atoms
         atoms.index = list(range(len(atoms.index)))
         new_chainIDs = []
         c = 0
@@ -353,12 +344,22 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
                     c += 1
             new_chainIDs.append(c)
         atoms['chainID'] = new_chainIDs
+        # change index so we can locate each atom easily
         atoms['index'] = list(range(len(atoms.index)))
         dna_atoms = atoms[atoms['resname'].isin(_nucleotides)].copy()
         dna_atoms['group'] = dna_atoms['name']
         dna_atoms.loc[dna_atoms['name'].isin(['A', 'T', 'C', 'G']), 'group'] = 'B'
-        dna_atoms = dna_atoms.set_index(['chainID', 'resSeq', 'group'])
-        bases = dna_atoms.loc[pd.IndexSlice[:, :, ['B']]].copy()
+        dna_atoms.index = zip(dna_atoms['chainID'], dna_atoms['resSeq'], dna_atoms['group'])
+        bases = dna_atoms[dna_atoms['group'] == 'B']
+        sugars = dna_atoms.loc[[(x[0], x[1], 'S') for x in bases.index]]
+        next_bases = bases.reindex([(x[0], x[1] + 1, 'B') for x in bases.index])
+        prev_bases = bases.reindex([(x[0], x[1] - 1, 'B') for x in bases.index])
+        bases.index = list(range(len(bases.index)))
+        sugars.index = bases.index
+        next_bases.index = bases.index
+        prev_bases.index = bases.index
+        sel_next_bases = next_bases[next_bases['name'].isin(['A', 'T', 'C', 'G'])].index.tolist()
+        sel_prev_bases = prev_bases[prev_bases['name'].isin(['A', 'T', 'C', 'G'])].index.tolist()
         # define forces
         dict_cross_stackings = {}
         for b in ['A', 'T', 'G', 'C']:
@@ -367,59 +368,50 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
             dict_cross_stackings.update({b: (force1, force2)})
         donor_dict = {i: [] for i in ['A', 'T', 'G', 'C']}
         acceptor_dict = {i: [] for i in ['A', 'T', 'G', 'C']}
-        for i in bases.index:
-            a1, a1n = int(bases.loc[i, 'index']), bases.loc[i, 'name']
-            a2 = int(dna_atoms.loc[(i[0], i[1], 'S'), 'index'])
-            j = (i[0], i[1] + 1, 'B')
-            if j in bases.index:
-                a3, a3n = int(bases.loc[j, 'index']), bases.loc[j, 'name']
-                force1, force2 = dict_cross_stackings[a1n]
-                columns = ['t03', 'T0CS_2', 'rng_cs2', 'rng_bp', 'eps_cs2', 'alpha_cs2', 'Sigma_2']
-                p = cross_definition.loc[(_WC_pair_dict[a1n], a1n, a3n), columns].tolist()
-                force1.addDonor(a1, a2, a3)
-                force2.addAcceptor(a1, a2, a3, p)
-                donor_dict[a1n].append(a1) # add force1 donor a1
-            k = (i[0], i[1] - 1, 'B')
-            if k in bases.index:
-                a3, a3n = int(bases.loc[k, 'index']), bases.loc[k, 'name']
-                force1, force2 = dict_cross_stackings[_WC_pair_dict[a1n]]
-                columns = ['t03', 'T0CS_1', 'rng_cs1', 'rng_bp', 'eps_cs1', 'alpha_cs1', 'Sigma_1']
-                p = cross_definition.loc[(_WC_pair_dict[a1n], a1n, a3n), columns].tolist()
-                force1.addAcceptor(a1, a2, a3, p)
-                force2.addDonor(a1, a2, a3)
-                acceptor_dict[_WC_pair_dict[a1n]].append(a1) # add force1 acceptor a1
+        # use a1, a2, a3 for atom indices
+        for i in sel_next_bases:
+            a1, a1n = bases.loc[i, 'index'], bases.loc[i, 'name']
+            a2 = sugars.loc[i, 'index']
+            a3, a3n = next_bases.loc[i, 'index'], next_bases.loc[i, 'name']
+            a1, a2, a3 = int(a1), int(a2), int(a3)
+            force1, force2 = dict_cross_stackings[a1n]
+            p = cross_definition.loc[[(_WC_pair_dict[a1n], a1n, a3n)]].squeeze()
+            p = p[['t03', 'T0CS_2', 'rng_cs2', 'rng_bp', 'eps_cs2', 'alpha_cs2', 'Sigma_2']].tolist()
+            force1.addDonor(a1, a2, a3)
+            force2.addAcceptor(a1, a2, a3, p)
+            donor_dict[a1n].append(a1) # add force1 donor a1
+        for i in sel_prev_bases:
+            a1, a1n = bases.loc[i, 'index'], bases.loc[i, 'name']
+            a2 = sugars.loc[i, 'index']
+            a3, a3n = prev_bases.loc[i, 'index'], prev_bases.loc[i, 'name']
+            a1, a2, a3 = int(a1), int(a2), int(a3)
+            force1, force2 = dict_cross_stackings[_WC_pair_dict[a1n]]
+            p = cross_definition.loc[[(_WC_pair_dict[a1n], a1n, a3n)]].squeeze()
+            p = p[['t03', 'T0CS_1', 'rng_cs1', 'rng_bp', 'eps_cs1', 'alpha_cs1', 'Sigma_1']].tolist()
+            force1.addAcceptor(a1, a2, a3, p)
+            force2.addDonor(a1, a2, a3)
+            acceptor_dict[_WC_pair_dict[a1n]].append(a1) # add force1 acceptor a1
         # set exclusions
+        dna_unique_chainIDs = dna_atoms['chainID'].drop_duplicates(keep='first').tolist()
+        if self.OpenCLPatch:
+            max_n = 6
+        else:
+            max_n = 9
         for b in ['A', 'T', 'C', 'G']:
             force1, force2 = dict_cross_stackings[b]
             donors = dna_atoms[dna_atoms['index'].isin(donor_dict[b])].copy()
             acceptors = dna_atoms[dna_atoms['index'].isin(acceptor_dict[b])].copy()
             donors['donor_id'] = list(range(len(donors.index)))
             acceptors['acceptor_id'] = list(range(len(acceptors.index)))
-            if self.OpenCLPatch:
-                # use more efficient method instead of looping over all the donors and acceptors
-                max_delta_resSeq = 2
-                for i in donors.index:
-                    donor_id = int(donors.loc[i, 'donor_id'])
-                    for delta_resSeq in range(-1*max_delta_resSeq, max_delta_resSeq + 1):
-                        j = (i[0], i[1] + delta_resSeq, 'B')
-                        if j in acceptors.index:
-                            acceptor_id = int(acceptors.loc[j, 'acceptor_id'])
-                            force1.addExclusion(donor_id, acceptor_id)
-                            force2.addExclusion(acceptor_id, donor_id)
-            else:
-                # loop over all the donors and acceptors
-                # this is inefficient, but usually we set self.OpenCLPatch as True and we do not use this method
-                max_delta_resSeq = 3
-                for i in donors.index:
-                    for j in acceptors.index:
-                        a1 = int(donors.loc[i, 'index'])
-                        a2 = int(acceptors.loc[j, 'index'])
-                        donor_id = int(donors.loc[i, 'donor_id'])
-                        acceptor_id = int(acceptor_id.loc[j, 'acceptor_id'])
-                        if (i[0] == j[0]) and (abs(i[1] - j[1]) <= max_delta_resSeq) or (a1 > a2):
-                            # Question: is this correct? It looks weird that as long as a1 > a2 there is an exclusion. 
-                            force1.addExclusion(donor_id, acceptor_id)
-                            force2.addExclusion(acceptor_id, donor_id)
+            for c in dna_unique_chainIDs:
+                donors_c = donors[donors['chainID'] == c]
+                acceptors_c = acceptors[acceptors['chainID'] == c]
+                for j, atom1 in donors_c.iterrows():
+                    for k, atom2 in acceptors_c.iterrows():
+                        a1, a2 = atom1['index'], atom2['index']
+                        if (abs(a1 - a2) <= max_n) or ((not self.OpenCLPatch) and (a1 > a2)):
+                            force1.addExclusion(atom1['donor_id'], atom2['acceptor_id'])
+                            force2.addExclusion(atom2['acceptor_id'], atom1['donor_id'])
             self.system.addForce(force1)
             self.system.addForce(force2)
     
