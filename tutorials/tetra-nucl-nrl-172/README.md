@@ -1,5 +1,7 @@
 # tetra-nucl-nrl-172
 
+Run NRL=172 tetranucleosome simulation consistent with out lammps settings. 
+
 pdb-files/dna.pdb and pdb-files/histone_*.pdb are produced by running `python separate_histone_dna.py`. 
 
 tetra_nucl_nrl_172.ipynb is the jupyter notebook that instructs how to set up and run tetranucleosome simulation. 

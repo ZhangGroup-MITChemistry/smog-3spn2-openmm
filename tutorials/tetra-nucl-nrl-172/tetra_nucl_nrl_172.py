@@ -17,7 +17,9 @@ from OpenSMOG3SPN2.utils.chromatin_helper_functions import remove_histone_tail_d
 from OpenSMOG3SPN2.forcefields.rigid import createRigidBodies
 
 # %% [markdown]
-# This is the tutorial for setting tetranucleosome simulation. This tetranucleosome has NRL value equal to 172. 
+# This is the tutorial for setting tetranucleosome simulation consistent with our lammps settings. This tetranucleosome has NRL value equal to 172. 
+# 
+# Importantly, in lammps setting, nonbonded interactions between 1-4 atom pairs involving histone tail atoms are excluded, even though we exclude dihedral potentials involving histone tail atoms. 
 
 # %%
 # set parameters
@@ -32,7 +34,8 @@ for i in range(n_nucl):
     histone_i_parser = SMOGParser.from_atomistic_pdb(f'pdb-files/histone_{i}.pdb', f'histone_{i}_CA.pdb', 
                                                      default_parse=False)
     histone_i_parser.parse_mol(get_native_pairs=False)
-    # remove dihedrals involving histone tails atoms
+    # remove dihedrals involving histone tail atoms
+    # do not update exclusions after removing dihedrals involving histone tail atoms
     histone_i_parser.protein_dihedrals = remove_histone_tail_dihedrals(histone_i_parser.protein_dihedrals)
     tetra_nucl.append_mol(histone_i_parser)
 
@@ -67,19 +70,23 @@ rigid_bodies = get_chromatin_rigid_bodies(n_nucl, nrl, n_rigid_bp_per_nucl=73)
 tetra_nucl.set_rigid_bodies(rigid_coord, rigid_bodies, keep_unchanged=['protein_exclusions', 'dna_exclusions', 
                                                                        'exclusions'])
 
+# an alternative way to set rigid bodies is using createRigidBodies, which does not remove any bonded interactions within the rigid body
+# on GPU, removing bonded interactions within rigid bodies may not accelerate simulation a lot
+
 
 # %%
 # add forces
 tetra_nucl.add_protein_bonds(force_group=1)
 tetra_nucl.add_protein_angles(force_group=2)
-#tetra_nucl.add_protein_dihedrals(force_group=3) # no need to add dihedrals as they are all within the rigid bodies
-#tetra_nucl.add_native_pairs(force_group=4) # no need to add native pairs as they are all within the rigid bodies
+# do not add dihedrals or native pairs, as they are all within rigid bodies
+# we still reserve force group indices 3 and 4 for dihedrals and native pairs
 tetra_nucl.add_dna_bonds(force_group=5)
 tetra_nucl.add_dna_angles(force_group=6)
 tetra_nucl.add_dna_stackings(force_group=7)
 tetra_nucl.add_dna_dihedrals(force_group=8)
 tetra_nucl.add_dna_base_pairs(force_group=9)
 tetra_nucl.add_dna_cross_stackings(force_group=10)
+tetra_nucl.parse_all_exclusions()
 tetra_nucl.add_all_vdwl(force_group=11)
 tetra_nucl.add_all_elec(force_group=12)
 tetra_nucl.save_system('rigid_system.xml')
@@ -88,16 +95,9 @@ tetra_nucl.save_system('rigid_system.xml')
 # set and run simulation
 temperature = 300*unit.kelvin
 friction_coeff = 0.01/unit.picosecond
-timestep = 5*unit.femtosecond
+timestep = 10*unit.femtosecond
 integrator = mm.LangevinMiddleIntegrator(temperature, friction_coeff, timestep)
 tetra_nucl.set_simulation(integrator, platform_name='CUDA', init_coord=init_coord)
-
-print('Simulation starting configruation energies of each group:')
-for i in range(1, 13):
-    state = tetra_nucl.simulation.context.getState(getEnergy=True, groups={i})
-    energy = state.getPotentialEnergy().value_in_unit(unit.kilocalorie_per_mole)
-    print(f'Group {i} energy is {energy} kcal/mol.')
-
 tetra_nucl.simulation.minimizeEnergy()
 tetra_nucl.add_reporters(report_interval=100, output_dcd='output.dcd')
 tetra_nucl.simulation.context.setVelocitiesToTemperature(temperature)

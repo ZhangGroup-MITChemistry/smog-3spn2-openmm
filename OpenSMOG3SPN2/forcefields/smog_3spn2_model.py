@@ -45,10 +45,9 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
         self.atoms = None
         self.dna_exclusions = None
         self.exclusions = None
-        # note we set base pair and cross stacking donors and acceptors as bonded attributes
+        # note we only set protein_exclusions as bonded attributes, since dna_exclusions and exclusions should be parsed by method after all the molecules are appended
         self.bonded_attr_names = ['protein_bonds', 'protein_angles', 'protein_dihedrals', 'native_pairs', 
-                                  'dna_bonds', 'dna_angles', 'dna_stackings', 'dna_dihedrals', 'protein_exclusions', 
-                                  'dna_exclusions', 'exclusions']
+                                  'dna_bonds', 'dna_angles', 'dna_stackings', 'dna_dihedrals', 'protein_exclusions']
         self.dna_type = dna_type
         self.OpenCLPatch = OpenCLPatch
         if default_parse_config:
@@ -91,32 +90,39 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
         '''
         atoms = self.atoms.copy()
         atoms['index'] = list(range(len(atoms.index)))
+        new_chainIDs = []
+        c = 0
+        for i, row in atoms.iterrows():
+            if i >= 1:
+                if row['chainID'] != atoms.loc[i - 1, 'chainID']:
+                    c += 1
+            new_chainIDs.append(c)
+        atoms['chainID'] = new_chainIDs
         dna_atoms = atoms[atoms['resname'].isin(_nucleotides)].copy()
-
+        dna_atoms['group'] = dna_atoms['name'].replace(['A', 'T', 'C', 'G'], 'B')
+        dna_atoms = dna_atoms.set_index(['chainID', 'resSeq', 'group'])
+        
         # set exclusions for atoms from neighboring residues
         dna_exclusions = []
-        unique_chainIDs = dna_atoms['chainID'].drop_duplicates(keep='first').tolist()
-        for c in unique_chainIDs:
-            dna_atoms_c = dna_atoms[dna_atoms['chainID'] == c].copy()
-            unique_resSeqs = dna_atoms_c['resSeq'].drop_duplicates(keep='first').tolist()
-            for r1 in unique_resSeqs:
-                for r2 in [r1, r1 + 1]:
-                    if r2 in unique_resSeqs:
-                        dna_atoms_c_r1 = dna_atoms_c[dna_atoms_c['resSeq'] == r1]
-                        dna_atoms_c_r2 = dna_atoms_c[dna_atoms_c['resSeq'] == r2]
-                        for a1 in dna_atoms_c_r1['index'].tolist():
-                            for a2 in dna_atoms_c_r2['index'].tolist():
-                                if a1 < a2:
-                                    dna_exclusions.append([a1, a2])
-        
+        for i in dna_atoms.index:
+            c, r = i[0], i[1]
+            a1 = int(dna_atoms.loc[i, 'index'])
+            for delta_r in [0, 1]:
+                for g in ['P', 'S', 'B']:
+                    j = (c, r + delta_r, g)
+                    if j in dna_atoms.index:
+                        a2 = int(dna_atoms.loc[j, 'index'])
+                        if a1 < a2:
+                            dna_exclusions.append([a1, a2])
+
+        # set exclusions between W-C base pairs
         if self.OpenCLPatch:
-            # set exclusions between W-C base pairs
-            for k in ['A', 'C']:
-                dna_atoms_1 = dna_atoms[dna_atoms['name'] == k]
-                dna_atoms_2 = dna_atoms[dna_atoms['name'] == _WC_pair_dict[k]]
+            for b in ['A', 'C']:
+                dna_atoms_1 = dna_atoms[dna_atoms['name'] == b]
+                dna_atoms_2 = dna_atoms[dna_atoms['name'] == _WC_pair_dict[b]]
                 for i in dna_atoms_1['index'].tolist():
                     for j in dna_atoms_2['index'].tolist():
-                        a1, a2 = i, j
+                        a1, a2 = int(i), int(j)
                         if a1 > a2:
                             a1, a2 = a2, a1
                         dna_exclusions.append([a1, a2])
@@ -127,11 +133,12 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
             self.dna_exclusions = dna_exclusions.sort_values(by=['a1', 'a2'], ignore_index=True)
         else:
             self.dna_exclusions = pd.DataFrame(columns=['a1', 'a2'])
-
+    
     def parse_all_exclusions(self):
         '''
         Parse all the exclusions (including protein exclusions and DNA exclusions). 
         Run this command before adding nonbonded interactions. 
+        
         '''
         self.parse_dna_exclusions()
         if hasattr(self, 'protein_exclusions'):
@@ -139,7 +146,8 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
                 self.protein_exclusions = pd.DataFrame(columns=['a1', 'a2'])
         else:
             self.protein_exclusions = pd.DataFrame(columns=['a1', 'a2'])
-        self.exclusions = pd.concat([self.protein_exclusions, self.dna_exclusions], ignore_index=True)
+        exclusions = pd.concat([self.protein_exclusions, self.dna_exclusions], ignore_index=True)
+        self.exclusions = exclusions.sort_values(by=['a1', 'a2'], ignore_index=True)
     
     def add_protein_bonds(self, force_group=1):
         '''
@@ -291,7 +299,7 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
         atoms['chainID'] = new_chainIDs
         atoms['index'] = list(range(len(atoms.index)))
         # originally index is set as tuples of chainID, resSeq, and name
-        # we use multiindex instead, which is more canonical method
+        # we use multiindex instead, which is the more canonical method
         atoms = atoms.set_index(['chainID', 'resSeq', 'name']) # use multiple columns as index
         dna_atoms = atoms[atoms['resname'].isin(_nucleotides)].copy()
         # find W-C pairs
@@ -355,8 +363,7 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
         atoms['chainID'] = new_chainIDs
         atoms['index'] = list(range(len(atoms.index)))
         dna_atoms = atoms[atoms['resname'].isin(_nucleotides)].copy()
-        dna_atoms['group'] = dna_atoms['name']
-        dna_atoms.loc[dna_atoms['name'].isin(['A', 'T', 'C', 'G']), 'group'] = 'B'
+        dna_atoms['group'] = dna_atoms['name'].replace(['A', 'T', 'C', 'G'], 'B')
         dna_atoms = dna_atoms.set_index(['chainID', 'resSeq', 'group'])
         bases = dna_atoms.loc[pd.IndexSlice[:, :, ['B']]].copy()
         # define forces

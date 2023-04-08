@@ -78,18 +78,18 @@ def remove_histone_tail_native_pairs_and_exclusions(df_native_pairs, df_exclusio
         New nonbonded exclusions. 
     
     '''
-    new_df_native_pairs = pd.DataFrame(columns=df_native_pairs.columns)
-    new_df_exclusions = pd.DataFrame(columns=df_exclusions.columns)
-    for i, row in df_native_pairs.iterrows():
+    df1 = df_native_pairs.copy()
+    for i, row in df1.iterrows():
         a1 = int(row['a1']) % _n_CA_atoms_per_histone
         a2 = int(row['a2']) % _n_CA_atoms_per_histone
-        if not any(x in _histone_tail_atoms for x in [a1, a2]):
-            new_df_native_pairs.loc[len(new_df_native_pairs.index)] = row
-    for i, row in df_exclusions.iterrows():
-        a1 = int(row['a1']) % _n_CA_atoms_per_histone
-        a2 = int(row['a2']) % _n_CA_atoms_per_histone
-        if not any(x in _histone_tail_atoms for x in [a1, a2]):
-            new_df_exclusions.loc[len(new_df_exclusions.index)] = row
+        if any(x in _histone_tail_atoms for x in [a1, a2]):
+            df1.loc[i, 'state'] = 'removed'
+        else:
+            df1.loc[i, 'state'] = 'kept'
+    new_df_native_pairs = df1.loc[df1['state'] == 'kept'].copy().reset_index(drop=True)
+    df2 = df1.loc[df1['state'] == 'removed', ['a1', 'a2']].copy().reset_index(drop=True)
+    df3 = pd.merge(df2, df_exclusions, how='outer', on=['a1', 'a2'], indicator=True)
+    new_df_exclusions = df3.loc[df3['_merge'] == 'right_only', ['a1', 'a2']].copy().reset_index(drop=True)
     return new_df_native_pairs, new_df_exclusions
 
 
