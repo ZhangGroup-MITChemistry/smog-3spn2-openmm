@@ -45,11 +45,12 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
     DNA 3SPN2 parser. 
     For B-curved DNA, the parser works best for a single strand ssDNA or WC-paired dsDNA. 
     '''
-    def __init__(self):
+    def __init__(self, cg_pdb, dna_type='B_curved'):
         '''
         Initialize. 
         '''
-        pass
+        self.atoms = helper_functions.parse_pdb(cg_pdb)
+        self.dna_type = dna_type
     
     def build_x3dna_template(self, temp_name='temp'):
         '''
@@ -156,7 +157,8 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
         
         # parse x3dna template
         # from_atomistic_pdb is a class method, so template_dna is a class object
-        template_dna = self.from_atomistic_pdb(f'{temp_name}_template.pdb', default_parse=False)
+        template_dna = self.from_atomistic_pdb(f'{temp_name}_template.pdb', f'cg_{temp_name}_template.pdb', 
+                                               default_parse=False)
         # check sequence
         # the target sequence is equal to the template sequence or the first half of template sequence
         target_sequence = self.get_sequence()
@@ -534,9 +536,8 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
         return new_cg_atoms
     
     @classmethod
-    def from_atomistic_pdb(cls, pdb_file, PSB_order=True, new_sequence=None, dna_type='B_curved', 
-                           cg_pdb=None, default_parse=True, template_from_x3dna=True, 
-                           temp_name='temp'):
+    def from_atomistic_pdb(cls, atomistic_pdb, cg_pdb, PSB_order=True, new_sequence=None, dna_type='B_curved', 
+                           default_parse=True, template_from_x3dna=True, temp_name='temp'):
         '''
         Create object from atomistic pdb file. 
         Ensure each chain in input pdb_file has unique chainID. 
@@ -544,8 +545,11 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
         
         Parameters
         ----------
-        pdb_file : str
-            Atomistic PDB file path. 
+        atomistic_pdb : str
+            Path for the input atomistic pdb file. 
+        
+        cg_pdb : str
+            Path for the output CG pdb file. 
         
         PSB_order : bool
             Whether to ensure CG atom order in each nucleotide is P-S-B.
@@ -555,11 +559,7 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
             If None, keep the original sequence. 
         
         dna_type : str
-            DNA type. 
-        
-        cg_pdb : None or str
-            Output CG PDB file path. 
-            If None, do not write CG PDB file. 
+            DNA type.  
         
         default_parse : bool
             Whether to parse molecule with default settings. 
@@ -568,17 +568,17 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
             Whether to use template built by x3dna. 
             If False, use the input pdb file as the template. 
         
+        temp_name : str
+            Template file names.
+        
         '''
-        self = cls()
-        atomistic_atoms = helper_functions.fix_pdb(pdb_file) # fix pdb
+        atomistic_atoms = helper_functions.fix_pdb(atomistic_pdb) # fix pdb
         cg_atoms = cls.aa_to_cg(atomistic_atoms, PSB_order=PSB_order) # do coarse-graining
         if new_sequence is not None:
             print(f'Change to new sequence: {new_sequence}')
             cg_atoms = cls.change_sequence(cg_atoms, new_sequence)
-        self.atoms = cg_atoms
-        if cg_pdb is not None:
-            helper_functions.write_pdb(self.atoms, cg_pdb)
-        self.dna_type = dna_type
+        helper_functions.write_pdb(cg_atoms, cg_pdb)
+        self = cls(cg_pdb, dna_type)
         if default_parse:
             self.parse_config_file()
             self.parse_mol(template_from_x3dna=template_from_x3dna, temp_name=temp_name)

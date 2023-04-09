@@ -1,7 +1,7 @@
 Atomic*.pdb
 histone_*.pdb
+cg_dna.pdb
 ref_frames.dat
-temp_parameters.par
-temp_template.pdb
+*temp*
 cg_chromatin.pdb
 

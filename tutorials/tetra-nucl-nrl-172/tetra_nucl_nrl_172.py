@@ -46,7 +46,7 @@ with open('dna_seq.txt', 'r') as f:
 seq2 = get_WC_paired_seq(seq1)
 target_seq = seq1 + seq2
 
-dna_parser = DNA3SPN2Parser.from_atomistic_pdb('pdb-files/dna.pdb', new_sequence=target_seq)
+dna_parser = DNA3SPN2Parser.from_atomistic_pdb('pdb-files/dna.pdb', 'cg_dna.pdb', new_sequence=target_seq)
 tetra_nucl.append_mol(dna_parser)
 tetra_nucl.atoms_to_pdb('cg_chromatin.pdb')
 

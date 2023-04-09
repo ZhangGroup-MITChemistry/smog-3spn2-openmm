@@ -63,10 +63,10 @@ class SMOGParser(object):
         Parameters
         ----------
         atomistic_pdb : str
-            Path for the atomistic pdb file. 
+            Path for the input atomistic pdb file. 
         
         ca_pdb : str
-            path for the CA pdb file. 
+            Path for the output CA pdb file. 
             
         write_TER : bool
             Whether to write TER between two chains. 

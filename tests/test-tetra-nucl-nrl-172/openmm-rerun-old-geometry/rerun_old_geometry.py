@@ -12,7 +12,7 @@ sys.path.append('../../..')
 from OpenSMOG3SPN2.forcefields.parsers import SMOGParser, DNA3SPN2Parser
 from OpenSMOG3SPN2.forcefields import SMOG3SPN2Model
 from OpenSMOG3SPN2.utils.helper_functions import get_WC_paired_seq
-from OpenSMOG3SPN2.utils.chromatin_helper_functions import remove_histone_tail_dihedrals, remove_histone_tail_native_pairs
+from OpenSMOG3SPN2.utils.chromatin_helper_functions import remove_histone_tail_dihedrals, remove_histone_tail_native_pairs_and_exclusions
 
 n_nucl = 4
 nrl = 172
@@ -28,11 +28,12 @@ for i in range(n_nucl):
 
 # load native pairs
 df_native_pairs = pd.read_csv('../pairs.dat', delim_whitespace=True, skiprows=1, 
-                               names=['a1', 'a2', 'type', 'epsilon_G', 'mu', 'sigma_G', 'alpha_G'])
+                              names=['a1', 'a2', 'type', 'epsilon_G', 'mu', 'sigma_G', 'alpha_G'])
 df_native_pairs = df_native_pairs.drop(['type'], axis=1)
 df_native_pairs[['a1', 'a2']] -= 1
 df_native_pairs[['epsilon_G', 'alpha_G']] *= 2.5
-tetra_nucl.native_pairs = remove_histone_tail_native_pairs(df_native_pairs)
+df_native_pairs, _ = remove_histone_tail_native_pairs_and_exclusions(df_native_pairs, tetra_nucl.protein_exclusions)
+tetra_nucl.native_pairs = df_native_pairs
 
 # load target DNA sequence
 # the sequence saved in dna_seq.txt only involves the first ssDNA
@@ -42,7 +43,7 @@ with open('dna_seq.txt', 'r') as f:
 seq2 = get_WC_paired_seq(seq1)
 target_seq = seq1 + seq2
 
-dna_parser = DNA3SPN2Parser.from_atomistic_pdb('../pdb-files/dna.pdb', new_sequence=target_seq, default_parse=False)
+dna_parser = DNA3SPN2Parser.from_atomistic_pdb('../pdb-files/dna.pdb', 'cg_dna.pdb', new_sequence=target_seq, default_parse=False)
 
 # use old geometry parameters
 dna_parser.parse_config_file()
