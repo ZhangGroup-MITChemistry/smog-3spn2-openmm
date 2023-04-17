@@ -30,8 +30,6 @@ def remove_histone_tail_dihedrals(df_dihedrals):
     
     A dihedral potential is removed if at least one atom involved is within histone tail. 
     
-    Note 1-4 exclusions correspond to histone tail dihedrals are not removed. 
-    
     Parameters
     ----------
     df_dihedrals : pd.DataFrame
@@ -108,6 +106,11 @@ def get_chromatin_rigid_bodies(n_nucl, nrl, n_rigid_bp_per_nucl=73):
     
     n_flexible_bp_per_nucl : int
         The number of flexible nucleosomal base pairs for each nucleosome. 
+    
+    Returns
+    -------
+    rigid_bodies : list
+        List of rigid bodies. 
     
     '''
     n_bp = nrl*(n_nucl - 1) + _n_bp_per_nucl

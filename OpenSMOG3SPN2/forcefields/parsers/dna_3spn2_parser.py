@@ -44,6 +44,7 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
     '''
     DNA 3SPN2 parser. 
     For B-curved DNA, the parser works best for a single strand ssDNA or WC-paired dsDNA. 
+    Please ensure the parsed DNA has unique chainID for each chain. 
     '''
     def __init__(self, cg_pdb, dna_type='B_curved'):
         '''
@@ -52,10 +53,11 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
         self.atoms = helper_functions.parse_pdb(cg_pdb)
         self.dna_type = dna_type
     
-    def build_x3dna_template(self, temp_name='temp'):
+    def build_x3dna_template(self, temp_name='dna'):
         '''
         Build template DNA structure with x3dna. 
         We do not need to specify whether to use PSB order, since template atom order is aligned with self.atoms.
+        If self.atoms is one dsDNA molecule and the target sequence is W-C paired, x3dna input sequence is the sequence of the first ssDNA. Else, use the full sequence of the DNA as x3dna input sequence. 
         
         Parameters
         ----------
@@ -64,7 +66,7 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
         
         Returns
         -------
-        template_atoms : pd.DataFrame
+        temp_atoms : pd.DataFrame
             X3DNA built CG DNA template structure. 
         
         '''
@@ -112,7 +114,7 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
         except KeyError:
             sys.exit('Cannot find X3DNA variable from the environment. ')
         
-        with open(f'{temp_name}_parameters.par', 'w') as par:
+        with open(f'{temp_name}_template_parameters.par', 'w') as par:
             par.write(f' {len(data)} # Number of base pairs\n')
             par.write(f' 0 # local base-pair & step parameters\n')
             par.write('#')
@@ -128,7 +130,7 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
                 subprocess.check_output([f'{location_x3dna}/bin/x3dna_utils',
                                          'cp_std', 'BDNA'])
                 subprocess.check_output([f'{location_x3dna}/bin/rebuild',
-                                         '-atomic', f'{temp_name}_parameters.par',
+                                         '-atomic', f'{temp_name}_template_parameters.par',
                                          f'{temp_name}_template.pdb'])
                 break
             except subprocess.CalledProcessError as e:
@@ -156,13 +158,13 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
                 f.write(new_line)
         
         # parse x3dna template
-        # from_atomistic_pdb is a class method, so template_dna is a class object
-        template_dna = self.from_atomistic_pdb(f'{temp_name}_template.pdb', f'cg_{temp_name}_template.pdb', 
+        # from_atomistic_pdb is a class method, so dna_temp is a class object
+        dna_temp = self.from_atomistic_pdb(f'{temp_name}_template.pdb', f'cg_{temp_name}_template.pdb', 
                                                default_parse=False)
         # check sequence
         # the target sequence is equal to the template sequence or the first half of template sequence
         target_sequence = self.get_sequence()
-        template_sequence = template_dna.get_sequence()
+        template_sequence = dna_temp.get_sequence()
         n1 = len(target_sequence)
         n2 = len(template_sequence)
         assert ((n1 == n2) or (2*n1 == n2))
@@ -170,26 +172,30 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
         
         # merge x3dna template structure with the original structure
         # as both CG structures use unique resSeq, we can merge by matching resSeq and name
+        # the merging ensures the atom orders in dna_temp_atoms are consistent with the ones in original_atoms
         original_atoms = self.atoms.copy()
-        template_atoms = template_dna.atoms.copy()
-        merged_atoms = pd.merge(original_atoms, template_atoms, on=['resSeq', 'name'], how='left', 
+        dna_temp_atoms = dna_temp.atoms.copy()
+        merged_atoms = pd.merge(original_atoms, dna_temp_atoms, on=['resSeq', 'name'], how='left', 
                                 suffixes=['_old', ''])
-        template_atoms = original_atoms.copy()
-        template_atoms[['x', 'y', 'z']] = merged_atoms[['x', 'y', 'z']]
-        return template_atoms
+        dna_temp_atoms = original_atoms.copy()
+        dna_temp_atoms[['x', 'y', 'z']] = merged_atoms[['x', 'y', 'z']]
+        return dna_temp_atoms
     
-    def parse_mol(self, template_from_x3dna=True, temp_name='temp'):
+    def parse_mol(self, temp_from_x3dna=True, temp_name='dna', input_temp=None):
         '''
-        Parse molecule. 
+        Parse molecule with given template. 
         
         Parameters
         ----------
-        template_from_x3dna : bool
+        temp_from_x3dna : bool
             Whether to use x3dna template. 
         
         temp_name : str
-            Name for built template files. 
-
+            Name for x3dna built template files. 
+        
+        input_temp : None or pd.DataFrame
+            Additional input template. Use input_temp only `if (not ((self.dna_type == 'B_curved') and temp_from_x3dna)) and (input_temp is not None)`. 
+        
         '''
         # parse configuration file if not yet
         if not hasattr(self, 'particle_definition'):
@@ -204,20 +210,19 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
             self.atoms.loc[self.atoms['name'] == row['name'], 'mass'] = row['mass']
         
         # set template
-        if (self.dna_type == 'B_curved') and template_from_x3dna:
-            self.template_atoms = self.build_x3dna_template(temp_name=temp_name)
+        if (self.dna_type == 'B_curved') and temp_from_x3dna:
+            self.temp_atoms = self.build_x3dna_template(temp_name=temp_name)
         else:
-            self.template_atoms = self.atoms
+            if input_temp is None:
+                self.temp_atoms = self.atoms
+            else:
+                self.temp_atoms = input_temp
         
-        # Make an index to build the topology
-        index = {}
-        cr_set = set()
-        for i, atom in self.atoms.iterrows():
-            index.update({(atom['chainID'], atom['resSeq'], atom['name']): i})
-            cr_set.update([(atom['chainID'], atom['resSeq'])])
-        cr_list = list(cr_set)
-        cr_list.sort()
-        assert len(index) == len(self.atoms)
+        # build atoms dataframe with multi-index
+        atoms = self.atoms.copy()
+        unique_cr = atoms[['chainID', 'resSeq']].drop_duplicates(ignore_index=True).copy()
+        atoms['index'] = list(range(len(atoms.index)))
+        atoms = atoms.set_index(['chainID', 'resSeq', 'name'])
         
         # set interaction types
         bond_types = self.bond_definition[self.bond_definition['DNA'] == self.dna_type]
@@ -231,19 +236,21 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
             ai = ftype['i']
             aj = ftype['j']
             s1 = ftype['s1']
-            for each in cr_list:
-                c, r = each[0], each[1]
+            for _j, row in unique_cr.iterrows():
+                c, r = row['chainID'], row['resSeq']
                 k1 = (c, r, ai)
                 k2 = (c, r + s1, aj)
-                if (k1 in index) and (k2 in index):
-                    bond_data += [[i, index[k1], index[k2]]]
+                if (k1 in atoms.index) and (k2 in atoms.index):
+                    a1 = int(atoms.loc[k1, 'index'])
+                    a2 = int(atoms.loc[k2, 'index'])
+                    bond_data += [[i, a1, a2]]
         bond_data = pd.DataFrame(bond_data, columns=['name', 'a1', 'a2'])
         self.dna_bonds = pd.merge(bond_data, bond_types, left_on='name', right_index=True)
         
         if self.dna_type == 'B_curved':
             # read r0 from template and save r0 in unit nm
-            x1 = self.template_atoms.loc[self.dna_bonds['a1'], ['x', 'y', 'z']].to_numpy().astype(np.float64)
-            x2 = self.template_atoms.loc[self.dna_bonds['a2'], ['x', 'y', 'z']].to_numpy().astype(np.float64)
+            x1 = self.temp_atoms.loc[self.dna_bonds['a1'], ['x', 'y', 'z']].to_numpy().astype(np.float64)
+            x2 = self.temp_atoms.loc[self.dna_bonds['a2'], ['x', 'y', 'z']].to_numpy().astype(np.float64)
             self.dna_bonds['r0'] = np.linalg.norm(x1 - x2, axis=1)*_angstrom_to_nanometer
         
         # set angles
@@ -258,19 +265,23 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
             b1 = ftype['Base1']
             b2 = ftype['Base2']
             sb = ftype['sB']
-            for each in cr_list:
-                c, r = each[0], each[1]
+            for _j, row in unique_cr.iterrows():
+                c, r = row['chainID'], row['resSeq']
                 k1 = (c, r, ai)
                 k2 = (c, r + s1, aj)
                 k3 = (c, r + s2, ak)
                 k4 = (c, r + sb, 'S')
-                if ((k1 in index) 
-                    and (k2 in index) 
-                    and (k3 in index) 
-                    and (k4 in index)
-                    and (b1 == '*' or base[index[k1]] == b1)
-                    and (b2 == '*' or base[index[k4]] == b2)):
-                    angle_data += [[i, index[k1], index[k2], index[k3], index[k4], sb]]
+                if ((k1 in atoms.index) 
+                    and (k2 in atoms.index) 
+                    and (k3 in atoms.index) 
+                    and (k4 in atoms.index)
+                    and (b1 == '*' or base[int(atoms.loc[k1, 'index'])] == b1)
+                    and (b2 == '*' or base[int(atoms.loc[k4, 'index'])] == b2)):
+                    a1 = int(atoms.loc[k1, 'index'])
+                    a2 = int(atoms.loc[k2, 'index'])
+                    a3 = int(atoms.loc[k3, 'index'])
+                    ax = int(atoms.loc[k4, 'index'])
+                    angle_data += [[i, a1, a2, a3, ax, sb]]
         angle_data = pd.DataFrame(angle_data, columns=['name', 'a1', 'a2', 'a3', 'ax', 'sB'])
         self.dna_angles = pd.merge(angle_data, angle_types, left_on='name', right_index=True)
         
@@ -279,9 +290,9 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
             # originally open3SPN2 uses name t0, and here we use name theta0
             # originally in open3SPN2 t0 is saved in degree, here for consistency we save it in rad
             # here we use x1, x2, and x3 for coordinates, and we use v1 and v2 for vectors between points
-            x1 = self.template_atoms.loc[self.dna_angles['a1'], ['x', 'y', 'z']].to_numpy().astype(np.float64)
-            x2 = self.template_atoms.loc[self.dna_angles['a2'], ['x', 'y', 'z']].to_numpy().astype(np.float64)
-            x3 = self.template_atoms.loc[self.dna_angles['a3'], ['x', 'y', 'z']].to_numpy().astype(np.float64)
+            x1 = self.temp_atoms.loc[self.dna_angles['a1'], ['x', 'y', 'z']].to_numpy().astype(np.float64)
+            x2 = self.temp_atoms.loc[self.dna_angles['a2'], ['x', 'y', 'z']].to_numpy().astype(np.float64)
+            x3 = self.temp_atoms.loc[self.dna_angles['a3'], ['x', 'y', 'z']].to_numpy().astype(np.float64)
             v1 = (x1 - x2)/np.linalg.norm(x1 - x2, axis=1, keepdims=True)
             v2 = (x3 - x2)/np.linalg.norm(x3 - x2, axis=1, keepdims=True)
             self.dna_angles['theta0'] = np.arccos(np.sum(v1*v2, axis=1))
@@ -294,13 +305,16 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
             ak = ftype['k']
             s1 = ftype['s1']
             s2 = ftype['s2']
-            for each in cr_list:
-                c, r = each[0], each[1]
+            for _j, row in unique_cr.iterrows():
+                c, r = row['chainID'], row['resSeq']
                 k1 = (c, r, ai)
                 k2 = (c, r + s1, aj)
                 k3 = (c, r + s2, ak)
-                if (k1 in index) and (k2 in index) and (k3 in index):
-                    stacking_data += [[i, index[k1], index[k2], index[k3]]]
+                if (k1 in atoms.index) and (k2 in atoms.index) and (k3 in atoms.index):
+                    a1 = int(atoms.loc[k1, 'index'])
+                    a2 = int(atoms.loc[k2, 'index'])
+                    a3 = int(atoms.loc[k3, 'index'])
+                    stacking_data += [[i, a1, a2, a3]]
         stacking_data = pd.DataFrame(stacking_data, columns=['name', 'a1', 'a2', 'a3'])
         self.dna_stackings = pd.merge(stacking_data, stacking_types, left_on='name', right_index=True)
         
@@ -314,14 +328,18 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
             s1 = ftype['s1']
             s2 = ftype['s2']
             s3 = ftype['s3']
-            for each in cr_list:
-                c, r = each[0], each[1]
+            for _j, row in unique_cr.iterrows():
+                c, r = row['chainID'], row['resSeq']
                 k1 = (c, r, ai)
                 k2 = (c, r + s1, aj)
                 k3 = (c, r + s2, ak)
                 k4 = (c, r + s3, al)
-                if (k1 in index) and (k2 in index) and (k3 in index) and (k4 in index):
-                    dihedral_data += [[i, index[k1], index[k2], index[k3], index[k4]]]
+                if (k1 in atoms.index) and (k2 in atoms.index) and (k3 in atoms.index) and (k4 in atoms.index):
+                    a1 = int(atoms.loc[k1, 'index'])
+                    a2 = int(atoms.loc[k2, 'index'])
+                    a3 = int(atoms.loc[k3, 'index'])
+                    a4 = int(atoms.loc[k4, 'index'])
+                    dihedral_data += [[i, a1, a2, a3, a4]]
         dihedral_data = pd.DataFrame(dihedral_data, columns=['name', 'a1', 'a2', 'a3', 'a4'])
         self.dna_dihedrals = pd.merge(dihedral_data, dihedral_types, left_on='name', right_index=True)
         
@@ -329,10 +347,10 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
             # native dihedral value theta is read from the template
             # be careful with how the dihedral is computed
             # parameter t0 is -1*theta - np.pi (unit is rad)
-            x1 = self.template_atoms.loc[self.dna_dihedrals['a1'], ['x', 'y', 'z']].to_numpy().astype(np.float64)
-            x2 = self.template_atoms.loc[self.dna_dihedrals['a2'], ['x', 'y', 'z']].to_numpy().astype(np.float64)
-            x3 = self.template_atoms.loc[self.dna_dihedrals['a3'], ['x', 'y', 'z']].to_numpy().astype(np.float64)
-            x4 = self.template_atoms.loc[self.dna_dihedrals['a4'], ['x', 'y', 'z']].to_numpy().astype(np.float64)
+            x1 = self.temp_atoms.loc[self.dna_dihedrals['a1'], ['x', 'y', 'z']].to_numpy().astype(np.float64)
+            x2 = self.temp_atoms.loc[self.dna_dihedrals['a2'], ['x', 'y', 'z']].to_numpy().astype(np.float64)
+            x3 = self.temp_atoms.loc[self.dna_dihedrals['a3'], ['x', 'y', 'z']].to_numpy().astype(np.float64)
+            x4 = self.temp_atoms.loc[self.dna_dihedrals['a4'], ['x', 'y', 'z']].to_numpy().astype(np.float64)
             v1 = x2 - x1
             v2 = x3 - x2
             v3 = x4 - x3
@@ -372,82 +390,76 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
                    'resname', 'chainID', 'resSeq', 'iCode',
                    'x', 'y', 'z', 'occupancy', 'tempFactor',
                    'element', 'charge', 'type']
-        temp = aa_atoms.copy()
-        temp = temp[temp['resname'].isin(_nucleotides)] # select DNA
-        temp['group'] = temp['name'].replace(_CG_map) # assign each atom to phosphate, sugar, or base
-        temp = temp[temp['group'].isin(['P', 'S', 'B'])]
+        mol = aa_atoms.copy()
+        mol = mol[mol['resname'].isin(_nucleotides)] # select DNA residues
+        mol['group'] = mol['name'].replace(_CG_map) # assign each atom to phosphate, sugar, or base
+        mol = mol[mol['group'].isin(['P', 'S', 'B'])].copy() # select DNA atoms based on group
         
         # Move the O3' to the next residue
         # also remove the O3' atom at the final residue of the chain
-        for c in temp['chainID'].unique():
-            sel = temp.loc[(temp['name'] == "O3\'") & (temp['chainID'] == c), "resSeq"]
-            temp.loc[(temp['name'] == "O3\'") & (temp['chainID'] == c), "resSeq"] = list(sel)[1:] + [-1]
-            sel = temp.loc[(temp['name'] == "O3\'") & (temp['chainID'] == c), "resname"]
-            temp.loc[(temp['name'] == "O3\'") & (temp['chainID'] == c), "resname"] = list(sel)[1:] + ["remove"]
-        temp = temp[temp['resname'] != 'remove']
+        for c in mol['chainID'].unique():
+            sel = mol.loc[(mol['name'] == "O3\'") & (mol['chainID'] == c), "resSeq"]
+            mol.loc[(mol['name'] == "O3\'") & (mol['chainID'] == c), "resSeq"] = list(sel)[1:] + [-1]
+            sel = mol.loc[(mol['name'] == "O3\'") & (mol['chainID'] == c), "resname"]
+            mol.loc[(mol['name'] == "O3\'") & (mol['chainID'] == c), "resname"] = list(sel)[1:] + ["remove"]
+        mol = mol[mol['resname'] != 'remove'].copy()
 
         # Calculate center of mass
         # perform multiplication with numpy array
         # view atom mass as weights for computing mean
-        temp['element'] = temp['element'].str.strip() # remove white spaces on both ends
-        temp['mass'] = temp.element.replace(_atom_masses).astype(float)
+        mol['element'] = mol['element'].str.strip() # remove white spaces on both ends
+        mol['mass'] = mol.element.replace(_atom_masses).astype(float)
         
-        coord = temp[['x', 'y', 'z']].to_numpy()
-        weight = temp['mass'].to_numpy()
-        temp[['x', 'y', 'z']] = (coord.T*weight).T
-        temp = temp[temp['element'] != 'H']  # Exclude hydrogens
-        cg_atoms = temp.groupby(['chainID', 'resSeq', 'resname', 'group']).sum(numeric_only=True).reset_index()
+        coord = mol[['x', 'y', 'z']].to_numpy()
+        weight = mol['mass'].to_numpy()
+        mol[['x', 'y', 'z']] = (coord.T*weight).T
+        mol = mol[mol['element'] != 'H']  # Exclude hydrogens
+        cg_atoms = mol.groupby(['chainID', 'resSeq', 'resname', 'group']).sum(numeric_only=True).reset_index()
         coord = cg_atoms[['x', 'y', 'z']].to_numpy()
         weight = cg_atoms['mass'].to_numpy()
         cg_atoms[['x', 'y', 'z']] = (coord.T/weight).T
         
         # Set pdb columns
         cg_atoms.loc[:, 'recname'] = 'ATOM'
-        cg_atoms.loc[:, 'name'] = cg_atoms['group']
+        cg_atoms['name'] = cg_atoms['group']
         cg_atoms.loc[:, ['altLoc', 'iCode', 'charge']] = ''
         cg_atoms.loc[:, ['occupancy', 'tempFactor']] = 0.0
         # Change name of base to real base
         mask = (cg_atoms['name'] == 'B')
-        cg_atoms.loc[mask, 'name'] = cg_atoms[mask].resname.str[-1]  # takes last letter from the residue name
+        cg_atoms.loc[mask, 'name'] = cg_atoms[mask].resname.str[-1] # takes last letter from the residue name
         cg_atoms['type'] = cg_atoms['name']
         # Set element (depends on base)
         cg_atoms['element'] = cg_atoms['name'].replace(_cg_atom_name_to_element_map)
         # Remove P from the beggining
         drop_list = []
-        for chain in cg_atoms.chainID.unique():
-            sel = cg_atoms[cg_atoms.chainID == chain]
+        for c in cg_atoms.chainID.unique():
+            sel = cg_atoms[cg_atoms.chainID == c]
             drop_list += list(sel[(sel.resSeq == sel.resSeq.min()) & sel['name'].isin(['P'])].index)
         cg_atoms = cg_atoms.drop(drop_list)
-        
+        unique_cr = cg_atoms[['chainID', 'resSeq']].drop_duplicates(ignore_index=True).copy()
+        cg_atoms = cg_atoms.set_index(['chainID', 'resSeq', 'group'])
         if PSB_order:
             # rearrange CG atom order to P-S-B in each nucleotide
-            cg_atoms['chainID_resSeq'] = cg_atoms['chainID'].astype(str) + '_' + cg_atoms['resSeq'].astype(str)
-            cg_atoms.index = cg_atoms['chainID_resSeq'].astype(str) + '_' + cg_atoms['group'].astype(str)
-            chainID_resSeq_no_duplicates = cg_atoms['chainID_resSeq'].drop_duplicates(keep='first').tolist()
-            cg_atoms_new = pd.DataFrame(columns=list(cg_atoms.columns))
-            for each in chainID_resSeq_no_duplicates:
-                each_P = f'{each}_P'
-                if each_P in cg_atoms.index:
-                    cg_atoms_new.loc[len(cg_atoms_new.index)] = cg_atoms.loc[each_P]
-                cg_atoms_new.loc[len(cg_atoms_new.index)] = cg_atoms.loc[f'{each}_S']
-                cg_atoms_new.loc[len(cg_atoms_new.index)] = cg_atoms.loc[f'{each}_B']
-            # check if the number of DNA atoms are the same
-            assert len(cg_atoms_new.index) == len(cg_atoms.index)
-            cg_atoms = cg_atoms_new.copy()
+            new_index = []
+            for _i, row in unique_cr.iterrows():
+                c, r = row['chainID'], row['resSeq']
+                j = (c, r, 'P')
+                if j in cg_atoms.index:
+                    new_index.append(j)
+                new_index += [(c, r, 'S'), (c, r, 'B')]
+            assert len(new_index) == len(cg_atoms.index)
+            cg_atoms = cg_atoms.reindex(new_index, copy=True)
         
         # give each residue a unique resSeq
         # this is useful as when we compare original structure with template built by x3dna, chainID may be different
-        cg_atoms['chainID_resSeq'] = cg_atoms['chainID'].astype(str) + '_' + cg_atoms['resSeq'].astype(str)
-        chainID_resSeq_no_duplicates = cg_atoms['chainID_resSeq'].drop_duplicates(keep='first').tolist()
-        r = 0
-        for each in chainID_resSeq_no_duplicates:
-            cg_atoms.loc[cg_atoms['chainID_resSeq'] == each, 'resSeq'] = r
-            r += 1
-        
-        # Renumber
-        # make atom serial start from 0
-        cg_atoms.index = list(range(len(cg_atoms.index)))
-        cg_atoms['serial'] = cg_atoms.index
+        new_r = 0
+        for _i, row in unique_cr.iterrows():
+            c, r = row['chainID'], row['resSeq']
+            cg_atoms.loc[pd.IndexSlice[c, r, :], 'new_resSeq'] = new_r
+            new_r += 1
+        cg_atoms = cg_atoms.reset_index()
+        cg_atoms['resSeq'] = cg_atoms['new_resSeq']
+        cg_atoms['serial'] = list(range(len(cg_atoms.index)))
         cg_atoms = cg_atoms[columns].copy()
         return cg_atoms
     
@@ -455,6 +467,7 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
     def get_sequence_list_from_cg_atoms(cg_atoms):
         '''
         Get all ssDNA sequence from CG atoms as a list. 
+        Since we use `groupby` to group by chainID, each chain has to possess a unique chainID. 
         
         Parameters
         ----------
@@ -478,12 +491,14 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
 
     def get_sequence_list(self):
         '''
-        Get all ssDNA sequence from self.atoms as a list.  
+        Get all ssDNA sequence from self.atoms as a list. 
+        Note each chain has to possess a unique chainID. 
         
         Returns
         -------
         sequence_list : list
             A list including multiple strings. Each string is the sequence of one chain. 
+        
         '''
         sequence_list = self.get_sequence_list_from_cg_atoms(self.atoms)
         return sequence_list
@@ -491,6 +506,7 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
     def get_sequence(self):
         '''
         Get all ssDNA sequence from CG atoms as a string. 
+        Note each chain has to possess a unique chainID. 
         
         Returns
         -------
@@ -524,10 +540,11 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
         '''
         new_cg_atoms = cg_atoms[cg_atoms['resname'].isin(_nucleotides)].copy()
         # ensure the new sequence has correct length
-        assert len(cg_atoms[cg_atoms['name'].isin(['A', 'T', 'C', 'G'])]) == len(sequence)
-        new_cg_atoms.loc[cg_atoms['name'].isin(['A', 'T', 'C', 'G']), 'name'] = [x for x in sequence]
+        assert len(new_cg_atoms[new_cg_atoms['name'].isin(['A', 'T', 'C', 'G'])]) == len(sequence)
+        new_cg_atoms.loc[new_cg_atoms['name'].isin(['A', 'T', 'C', 'G']), 'name'] = [x for x in sequence]
         new_cg_atoms['element'] = new_cg_atoms['name'].replace(_cg_atom_name_to_element_map)
-        for i, row in new_cg_atoms[cg_atoms['name'].isin(['A', 'T', 'C', 'G'])].iterrows():
+        bases = new_cg_atoms[new_cg_atoms['name'].isin(['A', 'T', 'C', 'G'])]
+        for i, row in bases.iterrows():
             chainID = row['chainID']
             resSeq = row['resSeq']
             flag1 = (new_cg_atoms['chainID'] == chainID)
@@ -537,7 +554,7 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
     
     @classmethod
     def from_atomistic_pdb(cls, atomistic_pdb, cg_pdb, PSB_order=True, new_sequence=None, dna_type='B_curved', 
-                           default_parse=True, template_from_x3dna=True, temp_name='temp'):
+                           default_parse=True, temp_from_x3dna=True, temp_name='dna', input_temp=None):
         '''
         Create object from atomistic pdb file. 
         Ensure each chain in input pdb_file has unique chainID. 
@@ -564,12 +581,15 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
         default_parse : bool
             Whether to parse molecule with default settings. 
         
-        template_from_x3dna : bool
+        temp_from_x3dna : bool
             Whether to use template built by x3dna. 
             If False, use the input pdb file as the template. 
         
         temp_name : str
             Template file names.
+        
+        input_temp : None or pd.DataFrame
+            Additional input template.
         
         '''
         atomistic_atoms = helper_functions.fix_pdb(atomistic_pdb) # fix pdb
@@ -581,7 +601,8 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
         self = cls(cg_pdb, dna_type)
         if default_parse:
             self.parse_config_file()
-            self.parse_mol(template_from_x3dna=template_from_x3dna, temp_name=temp_name)
+            self.parse_mol(temp_from_x3dna=temp_from_x3dna, temp_name=temp_name, 
+                           input_temp=input_temp)
         return self
         
         

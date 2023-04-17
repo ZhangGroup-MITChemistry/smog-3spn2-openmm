@@ -45,7 +45,8 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
         self.atoms = None
         self.dna_exclusions = None
         self.exclusions = None
-        # note we only set protein_exclusions as bonded attributes, since dna_exclusions and exclusions should be parsed by method after all the molecules are appended
+        # note dna_exclusions and exclusions are not included in self.bonded_attr_names
+        # since dna_exclusions and exclusions should be parsed after all the molecules are appended
         self.bonded_attr_names = ['protein_bonds', 'protein_angles', 'protein_dihedrals', 'native_pairs', 
                                   'dna_bonds', 'dna_angles', 'dna_stackings', 'dna_dihedrals', 'protein_exclusions']
         self.dna_type = dna_type
@@ -118,10 +119,10 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
         # set exclusions between W-C base pairs
         if self.OpenCLPatch:
             for b in ['A', 'C']:
-                dna_atoms_1 = dna_atoms[dna_atoms['name'] == b]
-                dna_atoms_2 = dna_atoms[dna_atoms['name'] == _WC_pair_dict[b]]
-                for i in dna_atoms_1['index'].tolist():
-                    for j in dna_atoms_2['index'].tolist():
+                dna_atom_indices_1 = dna_atoms.loc[dna_atoms['name'] == b, 'index'].tolist()
+                dna_atom_indices_2 = dna_atoms.loc[dna_atoms['name'] == _WC_pair_dict[b], 'index'].tolist()
+                for i in dna_atom_indices_1:
+                    for j in dna_atom_indices_2:
                         a1, a2 = int(i), int(j)
                         if a1 > a2:
                             a1, a2 = a2, a1
@@ -129,7 +130,7 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
         
         if len(dna_exclusions) >= 1:
             dna_exclusions = pd.DataFrame(np.array(dna_exclusions), columns=['a1', 'a2'])
-            dna_exclusions = dna_exclusions.drop_duplicates(ignore_index=True)
+            dna_exclusions = dna_exclusions.drop_duplicates(ignore_index=True).copy()
             self.dna_exclusions = dna_exclusions.sort_values(by=['a1', 'a2'], ignore_index=True)
         else:
             self.dna_exclusions = pd.DataFrame(columns=['a1', 'a2'])
@@ -305,8 +306,8 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
         # find W-C pairs
         # note as we have two types of W-C pairs (A-T and C-G), we need two separate forces
         for i, row in pair_definition.iterrows():
-            parameters = [row['torsion'], row['sigma'], row['t1'], row['t2'], row['rang'], 
-                          row['epsilon'], row['alpha']]
+            parameters = [row['torsion'], row['sigma'], row['t1'], row['t2'], row['rang'], row['epsilon'], 
+                          row['alpha']]
             base1, base2 = row['Base1'], row['Base2']
             donors1 = dna_atoms.loc[pd.IndexSlice[:, :, [base1]]].copy()
             acceptors1 = dna_atoms.loc[pd.IndexSlice[:, :, [base2]]].copy()
@@ -433,13 +434,20 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
     def add_all_vdwl(self, param_PP_MJ_path=f'{__location__}/parameters/pp_MJ.csv', cutoff_PD=1.425*unit.nanometer, 
                      force_group=11):
         '''
-        CG atom type 0-19 for amino acids.
-        CG atom type 20-25 for DNA atoms. 
+        Add all the nonbonded Van der Waals interactions. 
+        
+        CG atom type 0-19 for amino acids. CG atom type 20-25 for DNA atoms. 
         
         Parameters
         ----------
         param_PP_MJ : str
             Protein-protein MJ potential parameter file path. 
+        
+        cutoff_PD : Quantity
+            Protein-DNA Van der Waals interaction cutoff distance. 
+        
+        force_group : int
+            Force group. 
         
         '''
         print('Add all the nonbonded contact interactions.')
@@ -447,13 +455,39 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
         force = functional_terms.all_smog_MJ_3spn2_term(self, param_PP_MJ, cutoff_PD, force_group)
         self.system.addForce(force)
     
-    def add_all_elec(self, salt_concentration=150*unit.millimolar, temperature=300*unit.kelvin, 
+    def add_all_elec(self, salt_conc=150*unit.millimolar, temperature=300*unit.kelvin, 
                      elec_DD_charge_scale=0.6, cutoff_DD=5*unit.nanometer, cutoff_PP_PD=3.141504539*unit.nanometer, 
                      dielectric_PP_PD=78, force_group=12):
+        '''
+        Add all the electrostatic interactions. 
+        
+        Parameters
+        ----------
+        salt_conc : Quantity
+            Monovalent salt concentration. 
+        
+        temperature : Quantity
+            Temperature. 
+        
+        elec_DD_charge_scale : float or int
+            Charge scale factor for DNA-DNA electrostatic interactions. 
+        
+        cutoff_DD : Quantity
+            DNA-DNA electrostatic interaction cutoff. 
+        
+        cutoff_PP_PD : Quantity
+            Protein-protein and protein-DNA electrostatic interaction cutoff. 
+        
+        dielectric_PP_PD : float or int
+            Protein-protein and protein-DNA electrostatic interaction dielectric. 
+        
+        force_group : int
+            Force group. 
+        
+        '''
         print('Add all the electrostatic interactions.')
-        force = functional_terms.all_smog_3spn2_elec_term(self, salt_concentration, temperature, 
-                                                          elec_DD_charge_scale, cutoff_DD, cutoff_PP_PD, 
-                                                          dielectric_PP_PD, force_group)
+        force = functional_terms.all_smog_3spn2_elec_term(self, salt_conc, temperature, elec_DD_charge_scale, 
+                                                          cutoff_DD, cutoff_PP_PD, dielectric_PP_PD, force_group)
         self.system.addForce(force)
         
 

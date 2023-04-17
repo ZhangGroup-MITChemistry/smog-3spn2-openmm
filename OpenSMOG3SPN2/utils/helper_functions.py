@@ -95,8 +95,8 @@ def write_pdb(pdb_atoms, pdb_file, write_TER=False):
                 if write_TER and (atom['chainID'] != chainID):
                     pdb.write('TER\n')
             chainID = atom['chainID']
-            pdb_line = f'{atom.recname:<6}{atom.serial:>5} {atom["name"]:^4}{atom.altLoc:1}'+\
-                       f'{atom.resname:<3} {atom.chainID:1}{atom.resSeq:>4}{atom.iCode:1}   '+\
+            pdb_line = f'{atom.recname:<6}{int(atom.serial):>5} {atom["name"]:^4}{atom.altLoc:1}'+\
+                       f'{atom.resname:<3} {atom.chainID:1}{int(atom.resSeq):>4}{atom.iCode:1}   '+\
                        f'{atom.x:>8.3f}{atom.y:>8.3f}{atom.z:>8.3f}' +\
                        f'{atom.occupancy:>6.2f}{atom.tempFactor:>6.2f}'+' ' * 10 +\
                        f'{atom.element:>2}{atom.charge:>2}'

@@ -1,6 +1,7 @@
 __pycache__/
 slurm-output/
 my-tests/
+backup/
 
 **/*.dcd
 **/*.xml

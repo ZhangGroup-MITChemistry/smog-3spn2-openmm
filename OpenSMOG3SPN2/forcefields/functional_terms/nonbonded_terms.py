@@ -124,8 +124,8 @@ def all_smog_MJ_3spn2_term(mol, param_PP_MJ, cutoff_PD=1.425*unit.nanometer, for
     return vdwl
 
 
-def all_smog_3spn2_elec_term(mol, salt_concentration=150*unit.millimolar, 
-                             temperature=300*unit.kelvin, elec_DD_charge_scale=0.6, cutoff_DD=5*unit.nanometer, 
+def all_smog_3spn2_elec_term(mol, salt_conc=150*unit.millimolar, temperature=300*unit.kelvin, 
+                             elec_DD_charge_scale=0.6, cutoff_DD=5*unit.nanometer, 
                              cutoff_PP_PD=3.141504539*unit.nanometer, dielectric_PP_PD=78, force_group=12):
     '''
     Combine all the SMOG and 3SPN2 electrostatic interactions into one force. 
@@ -137,10 +137,12 @@ def all_smog_3spn2_elec_term(mol, salt_concentration=150*unit.millimolar,
     Type 3 for phosphate CG atoms. 
 
     '''
-    print(f'For electrostatic interactions, set monovalent salt concentration as {salt_concentration.value_in_unit(unit.millimolar)} mM.')
-    print(f'For electrostatic interactions, set temperature as {temperature.value_in_unit(unit.kelvin)} K.')
-    e = 249.4 - 0.788*(temperature/unit.kelvin) + 7.2E-4*(temperature/unit.kelvin)**2
-    a = 1 - 0.2551 * (salt_concentration/unit.molar) + 5.151E-2*(salt_concentration/unit.molar)**2 - 6.889E-3*(salt_concentration/unit.molar)**3
+    C = salt_conc.value_in_unit(unit.molar)
+    T = temperature.value_in_unit(unit.kelvin)
+    print(f'For electrostatic interactions, set monovalent salt concentration as {1000*C} mM.')
+    print(f'For electrostatic interactions, set temperature as {T} K.')
+    e = 249.4 - 0.788*T + 7.2E-4*T**2
+    a = 1 - 0.2551*C + 5.151E-2*C**2 - 6.889E-3*C**3
     dielectric_DD = e*a
     print(f'DNA-DNA dielectric constant is {dielectric_DD}')
     print(f'Protein-protein and protein-DNA dielectric constant is {dielectric_PP_PD}.')
@@ -160,19 +162,19 @@ def all_smog_3spn2_elec_term(mol, salt_concentration=150*unit.millimolar,
         for j in range(i, n_atom_types):
             q_i = charge_list[i]
             q_j = charge_list[j]
-            if i == 3 and j == 3:
+            if (i == 3) and (j == 3):
                 # phosphate-phosphate electrostatic interactions
                 q_i *= elec_DD_charge_scale
                 q_j *= elec_DD_charge_scale
                 cutoff_ij = cutoff_DD
                 denominator = 4*np.pi*VEP*dielectric_DD/(NA*(EC**2))
                 denominator = denominator.value_in_unit(unit.kilojoule_per_mole**-1*unit.nanometer**-1)
-                ldby_ij = (dielectric_DD*VEP*kB*temperature/(2.0*NA*(EC**2)*salt_concentration))**0.5
+                ldby_ij = (dielectric_DD*VEP*kB*temperature/(2.0*NA*(EC**2)*salt_conc))**0.5
             else:
                 cutoff_ij = cutoff_PP_PD
                 denominator = 4*np.pi*VEP*dielectric_PP_PD/(NA*(EC**2))
                 denominator = denominator.value_in_unit(unit.kilojoule_per_mole**-1*unit.nanometer**-1)
-                ldby_ij = (dielectric_PP_PD*VEP*kB*temperature/(2.0*NA*(EC**2)*salt_concentration))**0.5
+                ldby_ij = (dielectric_PP_PD*VEP*kB*temperature/(2.0*NA*(EC**2)*salt_conc))**0.5
             alpha_map[i, j] = q_i*q_j/denominator
             alpha_map[j, i] = alpha_map[i, j]
             cutoff_map[i, j] = cutoff_ij.value_in_unit(unit.nanometer)
