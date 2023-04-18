@@ -40,6 +40,60 @@ def dna_3spn2_base_pair_term(use_pbc, cutoff=1.8, force_group=9):
 
 def dna_3spn2_cross_stacking_term(use_pbc, cutoff=1.8, force_group=10):
     '''
+    Need to add donors, acceptors, and set exclusions after running this function. 
+    
+    Some notes about the expression:
+        t3 is the angle composed of vector d1-d2 and a1-a2. 
+        In this version, each (atom1, atom2, atom3) group only act as either donor or acceptor. 
+        
+    '''
+    cross_stackings = mm.CustomHbondForce(f'''energy;
+                                          energy=fdt3*(fdtCS1*attr1+fdtCS2*attr2)/2;
+                                          attr1=epsilon1*(1-exp(-alpha1*dr1))^2*step(dr1)-epsilon1;
+                                          attr2=epsilon2*(1-exp(-alpha2*dr2))^2*step(dr2)-epsilon2;
+                                          fdt3=max(f3*pair0t3,pair1t3);
+                                          fdtCS1=max(f1*pair0tCS1,pair1tCS1);
+                                          fdtCS2=max(f2*pair0tCS2,pair1tCS2);
+                                          pair0t3=step({np.pi}+dt3)*step({np.pi}-dt3);
+                                          pair0tCS1=step({np.pi}+dtCS1)*step({np.pi}-dtCS1);
+                                          pair0tCS2=step({np.pi}+dtCS2)*step({np.pi}-dtCS2);
+                                          pair1t3=step({np.pi}/2+dt3)*step({np.pi}/2-dt3);
+                                          pair1tCS1=step({np.pi}/2+dtCS1)*step({np.pi}/2-dtCS1);
+                                          pair1tCS2=step({np.pi}/2+dtCS2)*step({np.pi}/2-dtCS2);
+                                          f1=1-cos(dtCS1)^2;
+                                          f2=1-cos(dtCS2)^2;
+                                          f3=1-cos(dt3)^2;
+                                          dr1=distance(d1,a3)-sigma1;
+                                          dr2=distance(a1,d3)-sigma2;
+                                          dt3=rng_BP*(t3-t03);
+                                          dtCS1=rng_CS1*(tCS1-t0CS1);
+                                          dtCS2=rng_CS2*(tCS2-t0CS2);
+                                          tCS1=angle(d2,d1,a3);
+                                          tCS2=angle(a2,a1,d3);
+                                          t3=acos(cost3lim);
+                                          cost3lim=min(max(cost3,-0.99),0.99);
+                                          cost3=sin(t1)*sin(t2)*cos(phi)-cos(t1)*cos(t2);
+                                          t1=angle(d2,d1,a1);
+                                          t2=angle(d1,a1,a2);
+                                          phi=dihedral(d2,d1,a1,a2);
+                                          ''')
+    donor_parameters = ['t0CS2', 'rng_CS2', 'epsilon2', 'alpha2', 'sigma2']
+    acceptor_parameters = ['t03', 't0CS1', 'rng_CS1', 'rng_BP', 'epsilon1', 'alpha1', 'sigma1']
+    for p in donor_parameters:
+        cross_stackings.addPerDonorParameter(p)
+    for p in acceptor_parameters:
+        cross_stackings.addPerAcceptorParameter(p)
+    if use_pbc:
+        cross_stackings.setNonbondedMethod(cross_stackings.CutoffPeriodic)
+    else:
+        cross_stackings.setNonbondedMethod(cross_stackings.CutoffNonPeriodic)
+    cross_stackings.setCutoffDistance(cutoff)
+    cross_stackings.setForceGroup(force_group)
+    return cross_stackings
+
+
+def legacy_dna_3spn2_cross_stacking_term(use_pbc, cutoff=1.8, force_group=10):
+    '''
     Need to add donors, acceptors, and set exclusions after running this function.  
     '''
     cross_stackings = mm.CustomHbondForce(f'''energy;

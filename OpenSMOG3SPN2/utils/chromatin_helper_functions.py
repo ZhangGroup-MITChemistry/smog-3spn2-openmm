@@ -56,7 +56,9 @@ def remove_histone_tail_dihedrals(df_dihedrals):
 def remove_histone_tail_native_pairs_and_exclusions(df_native_pairs, df_exclusions):
     '''
     Remove histone tail native pair potentials and corresponding exclusions from a single histone. 
-    A native pair potential is removed if at least one atom involved is within histone tail. The corresponding exclusions should also be removed.
+    A native pair potential is removed if at least one atom involved is within histone tail. 
+    The corresponding exclusions should also be removed if the native pair is removed.
+    Also remove native pairs between atoms from different histones. 
     
     Parameters
     ----------
@@ -81,6 +83,8 @@ def remove_histone_tail_native_pairs_and_exclusions(df_native_pairs, df_exclusio
         a1 = int(row['a1']) % _n_CA_atoms_per_histone
         a2 = int(row['a2']) % _n_CA_atoms_per_histone
         if any(x in _histone_tail_atoms for x in [a1, a2]):
+            df1.loc[i, 'state'] = 'removed'
+        elif (int(row['a1']) // _n_CA_atoms_per_histone) != (int(row['a2']) // _n_CA_atoms_per_histone):
             df1.loc[i, 'state'] = 'removed'
         else:
             df1.loc[i, 'state'] = 'kept'

@@ -6,7 +6,7 @@
 #SBATCH --mem=40GB
 #SBATCH --time=12:00:00
 
-python build_nonrigid_heavy_system.py
+python build_nonrigid_system.py
 
 echo "job done"
 

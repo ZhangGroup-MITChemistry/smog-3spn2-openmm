@@ -1,7 +1,8 @@
 Atomic*.pdb
 histone*CA.pdb
-cg_chromatin.pdb
 *.csv
 temp*
 ref_frames.dat
+cg*pdb
+*template*
 

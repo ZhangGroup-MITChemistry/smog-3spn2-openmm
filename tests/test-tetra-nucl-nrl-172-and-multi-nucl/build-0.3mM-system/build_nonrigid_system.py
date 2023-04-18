@@ -96,6 +96,6 @@ chromatin.add_dna_cross_stackings(force_group=10)
 chromatin.parse_all_exclusions()
 chromatin.add_all_vdwl(force_group=11)
 chromatin.add_all_elec(force_group=12)
-chromatin.save_system('nonrigid_heavy_system.xml')
+chromatin.save_system('nonrigid_system.xml')
 
 

@@ -333,7 +333,11 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
     
     def add_dna_cross_stackings(self, cutoff=1.8, force_group=10):
         '''
-        Add DNA cross stacking potentials. 
+        New method for adding DNA cross stacking potentials. This method should be faster. 
+        
+        The previous method is slow because each (B1, S1, B2) atom group acts as both donor and acceptor. 
+        We accelerate by using (B1, S1, B2) atom group as either donor or acceptor. 
+        The group is a donor if resid(B1) + 1 == resid(B2), and an acceptor if resid(B1) - 1 == resid(B2). 
         
         Please ensure two neighboring chains in self.atoms do not share the same chainID, so that different chains can be distinguished properly. 
         
@@ -369,12 +373,111 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
         bases = dna_atoms.loc[pd.IndexSlice[:, :, ['B']]].copy()
         # define forces
         dict_cross_stackings = {}
-        for b in ['A', 'T', 'G', 'C']:
-            force1 = functional_terms.dna_3spn2_cross_stacking_term(self.use_pbc, cutoff, force_group)
-            force2 = functional_terms.dna_3spn2_cross_stacking_term(self.use_pbc, cutoff, force_group)
+        for b in ['A', 'T', 'C', 'G']:
+            force = functional_terms.dna_3spn2_cross_stacking_term(self.use_pbc, cutoff, force_group)
+            dict_cross_stackings[b] = force
+        donor_dict = {i: [] for i in ['A', 'T', 'C', 'G']}
+        acceptor_dict = {i: [] for i in ['A', 'T', 'C', 'G']}
+        for i in bases.index:
+            # use a1, a2, and a3 to represent atom indices
+            a1, a1n = int(bases.loc[i, 'index']), bases.loc[i, 'name']
+            a2 = int(dna_atoms.loc[(i[0], i[1], 'S'), 'index'])
+            j = (i[0], i[1] + 1, 'B')
+            if j in bases.index:
+                a3, a3n = int(bases.loc[j, 'index']), bases.loc[j, 'name']
+                force = dict_cross_stackings[a1n]
+                col = ['T0CS_2', 'rng_cs2', 'eps_cs2', 'alpha_cs2', 'Sigma_2']
+                p = cross_definition.loc[(_WC_pair_dict[a1n], a1n, a3n), col].tolist()
+                force.addDonor(a1, a2, a3, p)
+                donor_dict[a1n].append(a1)
+            k = (i[0], i[1] - 1, 'B')
+            if k in bases.index:
+                a3, a3n = int(bases.loc[k, 'index']), bases.loc[k, 'name']
+                force = dict_cross_stackings[_WC_pair_dict[a1n]]
+                col = ['t03', 'T0CS_1', 'rng_cs1', 'rng_bp', 'eps_cs1', 'alpha_cs1', 'Sigma_1']
+                p = cross_definition.loc[(_WC_pair_dict[a1n], a1n, a3n), col].tolist()
+                force.addAcceptor(a1, a2, a3, p)
+                acceptor_dict[_WC_pair_dict[a1n]].append(a1)
+        # set exclusions
+        for b in ['A', 'T', 'C', 'G']:
+            force = dict_cross_stackings[b]
+            donors = bases[bases['index'].isin(donor_dict[b])].copy()
+            acceptors = bases[bases['index'].isin(acceptor_dict[b])].copy()
+            donors['donor_id'] = list(range(len(donors.index)))
+            acceptors['acceptor_id'] = list(range(len(acceptors.index)))
+            if self.OpenCLPatch:
+                # use more efficient method instead of looping over all the donors and acceptors
+                max_delta_resSeq = 2
+                for i in donors.index:
+                    donor_id = int(donors.loc[i, 'donor_id'])
+                    for delta_resSeq in range(-1*max_delta_resSeq, max_delta_resSeq + 1):
+                        j = (i[0], i[1] + delta_resSeq, 'B')
+                        if j in acceptors.index:
+                            acceptor_id = int(acceptors.loc[j, 'acceptor_id'])
+                            force.addExclusion(donor_id, acceptor_id)
+            else:
+                # loop over all the donors and acceptors
+                # this is inefficient, but usually we set self.OpenCLPatch as True and we do not use this method
+                max_delta_resSeq = 3
+                for i in donors.index:
+                    a1 = int(donors.loc[i, 'index'])
+                    donor_id = int(donors.loc[i, 'donor_id'])
+                    for j in acceptors.index:
+                        a2 = int(acceptors.loc[j, 'index'])
+                        acceptor_id = int(acceptor_id.loc[j, 'acceptor_id'])
+                        if (i[0] == j[0]) and (abs(i[1] - j[1]) <= max_delta_resSeq) or (a1 > a2):
+                            # Question: is this correct? It looks weird that as long as a1 > a2 there is an exclusion. 
+                            force.addExclusion(donor_id, acceptor_id)
+            self.system.addForce(force)
+        
+    
+    def legacy_add_dna_cross_stackings(self, cutoff=1.8, force_group=10):
+        '''
+        Add DNA cross stacking potentials. 
+        
+        This is the old method, which is slower, because each (B1, S1, B2) atom group acts as both donors and acceptors. 
+        This method is still correct, so it can be used for verifications. 
+        
+        Please ensure two neighboring chains in self.atoms do not share the same chainID, so that different chains can be distinguished properly. 
+        
+        The method should be efficient if OpenCLPatch is True. 
+        
+        Parameters
+        ----------
+        cutoff : float or int
+            Cutoff distance. 
+        
+        force_group : int
+            Force group.
+        
+        '''
+        print('Add DNA cross stackings.')
+        cross_definition = self.cross_definition[self.cross_definition['DNA'] == self.dna_type].copy()
+        cross_definition = cross_definition.set_index(['Base_d1', 'Base_a1', 'Base_a3'])
+        atoms = self.atoms.copy()
+        # reset chainID to unique numbers so forces can be set properly
+        atoms.index = list(range(len(atoms.index)))
+        new_chainIDs = []
+        c = 0
+        for i, row in atoms.iterrows():
+            if i >= 1:
+                if row['chainID'] != atoms.loc[i - 1, 'chainID']:
+                    c += 1
+            new_chainIDs.append(c)
+        atoms['chainID'] = new_chainIDs
+        atoms['index'] = list(range(len(atoms.index)))
+        dna_atoms = atoms[atoms['resname'].isin(_nucleotides)].copy()
+        dna_atoms['group'] = dna_atoms['name'].replace(['A', 'T', 'C', 'G'], 'B')
+        dna_atoms = dna_atoms.set_index(['chainID', 'resSeq', 'group'])
+        bases = dna_atoms.loc[pd.IndexSlice[:, :, ['B']]].copy()
+        # define forces
+        dict_cross_stackings = {}
+        for b in ['A', 'T', 'C', 'G']:
+            force1 = functional_terms.legacy_dna_3spn2_cross_stacking_term(self.use_pbc, cutoff, force_group)
+            force2 = functional_terms.legacy_dna_3spn2_cross_stacking_term(self.use_pbc, cutoff, force_group)
             dict_cross_stackings.update({b: (force1, force2)})
-        donor_dict = {i: [] for i in ['A', 'T', 'G', 'C']}
-        acceptor_dict = {i: [] for i in ['A', 'T', 'G', 'C']}
+        donor_dict = {i: [] for i in ['A', 'T', 'C', 'G']}
+        acceptor_dict = {i: [] for i in ['A', 'T', 'C', 'G']}
         for i in bases.index:
             a1, a1n = int(bases.loc[i, 'index']), bases.loc[i, 'name']
             a2 = int(dna_atoms.loc[(i[0], i[1], 'S'), 'index'])
@@ -399,8 +502,8 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
         # set exclusions
         for b in ['A', 'T', 'C', 'G']:
             force1, force2 = dict_cross_stackings[b]
-            donors = dna_atoms[dna_atoms['index'].isin(donor_dict[b])].copy()
-            acceptors = dna_atoms[dna_atoms['index'].isin(acceptor_dict[b])].copy()
+            donors = bases[bases['index'].isin(donor_dict[b])].copy()
+            acceptors = bases[bases['index'].isin(acceptor_dict[b])].copy()
             donors['donor_id'] = list(range(len(donors.index)))
             acceptors['acceptor_id'] = list(range(len(acceptors.index)))
             if self.OpenCLPatch:
@@ -419,10 +522,10 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
                 # this is inefficient, but usually we set self.OpenCLPatch as True and we do not use this method
                 max_delta_resSeq = 3
                 for i in donors.index:
+                    a1 = int(donors.loc[i, 'index'])
+                    donor_id = int(donors.loc[i, 'donor_id'])
                     for j in acceptors.index:
-                        a1 = int(donors.loc[i, 'index'])
                         a2 = int(acceptors.loc[j, 'index'])
-                        donor_id = int(donors.loc[i, 'donor_id'])
                         acceptor_id = int(acceptor_id.loc[j, 'acceptor_id'])
                         if (i[0] == j[0]) and (abs(i[1] - j[1]) <= max_delta_resSeq) or (a1 > a2):
                             # Question: is this correct? It looks weird that as long as a1 > a2 there is an exclusion. 

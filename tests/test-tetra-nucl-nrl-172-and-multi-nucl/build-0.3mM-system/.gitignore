@@ -1,0 +1,8 @@
+Atomic*.pdb
+intermediate-files/
+*temp*
+ref_frames.dat
+cg_single_nucl.pdb
+cg_tetra_nucl.pdb
+start.pdb
+
