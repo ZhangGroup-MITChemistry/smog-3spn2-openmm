@@ -1243,7 +1243,6 @@ thermo              1
 #thermo_style        multi
 thermo_style        custom step pe v_ebp v_ecstk v_eexcl v_dna_ecoul v_nbp c_e_bonds[*] c_e_angles[*] c_e_dihedrals[*] c_e_sbm_pair c_e_lj_debye c_e_lj_debye_vdwl c_e_lj_debye_coul v_e_all_vdwl v_e_all_coul
 thermo_modify flush yes
-thermo_modify flush yes
 
 #velocity            all create ${T} ${random} rot yes mom yes dist gaussian
 
@@ -1284,10 +1283,10 @@ Step PotEng v_ebp v_ecstk v_eexcl v_dna_ecoul v_nbp c_e_bonds[1] c_e_bonds[2] c_
        8    32255.441    -1273.374    -420.8279    44.334908    228.17837          454    12934.039    11517.745    7828.9437    10190.589    662.86557   -3277.0456    45.382008   -5601.3162   -624.07333      14.9775   -639.05083    59.312409   -410.87246 
        9    32363.218   -1291.3903   -416.41781    46.428112      227.784          464    12926.248    11509.688    7855.4475     10248.27    689.15689   -3237.7515    45.382027   -5601.3162   -638.31036    18.906007   -657.21636    65.334119   -429.43236 
       10    32243.903   -1278.6939   -419.54124    43.904587    243.24518          461     12943.83    11483.969    7834.6664    10224.316    680.86318    -3262.357     45.38203   -5601.3162   -694.36508     17.53147   -711.89655    61.436057   -468.65137 
-Loop time of 1.78778 on 1 procs for 11 steps with 7782 atoms
+Loop time of 1.76956 on 1 procs for 11 steps with 7782 atoms
 
-Performance: 0.532 ns/day, 45.146 hours/ns, 6.153 timesteps/s
-98.6% CPU use with 1 MPI tasks x no OpenMP threads
+Performance: 0.537 ns/day, 44.686 hours/ns, 6.216 timesteps/s
+97.1% CPU use with 1 MPI tasks x no OpenMP threads
 
 MPI task timing breakdown:
 Section |  min time  |  avg time  |  max time  |%varavg| %total
@@ -1298,7 +1297,7 @@ Neigh   | 0          | 0          | 0          |   0.0 |  0.00
 Comm    | 0          | 0          | 0          |   0.0 |  0.00
 Output  | 0          | 0          | 0          |   0.0 |  0.00
 Modify  | 0          | 0          | 0          |   0.0 |  0.00
-Other   |            | 1.788      |            |       |100.00
+Other   |            | 1.77       |            |       |100.00
 
 Nlocal:    7782 ave 7782 max 7782 min
 Histogram: 1 0 0 0 0 0 0 0 0 0

@@ -3,7 +3,6 @@ import pandas as pd
 import simtk.openmm as mm
 import simtk.openmm.app as app
 import simtk.unit as unit
-import itertools
 from OpenSMOG3SPN2.forcefields.cg_model import CGModel
 from OpenSMOG3SPN2.forcefields import functional_terms
 from OpenSMOG3SPN2.forcefields.parameters.mixin_3spn2_config_parser import Mixin3SPN2ConfigParser
@@ -309,27 +308,32 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
             parameters = [row['torsion'], row['sigma'], row['t1'], row['t2'], row['rang'], row['epsilon'], 
                           row['alpha']]
             base1, base2 = row['Base1'], row['Base2']
-            donors1 = dna_atoms.loc[pd.IndexSlice[:, :, [base1]]].copy()
-            acceptors1 = dna_atoms.loc[pd.IndexSlice[:, :, [base2]]].copy()
+            atom_names = atoms.index.get_level_values('name')
+            if (base1 not in atom_names) or (base2 not in atom_names):
+                # check if certain types of base exist
+                continue
+            donors1 = dna_atoms.loc[pd.IndexSlice[:, :, [base1]], :].copy()
+            acceptors1 = dna_atoms.loc[pd.IndexSlice[:, :, [base2]], :].copy()
             donors2 = dna_atoms.loc[[(x[0], x[1], 'S') for x in donors1.index]].copy()
             acceptors2 = dna_atoms.loc[[(x[0], x[1], 'S') for x in acceptors1.index]].copy()
-            force_i = functional_terms.dna_3spn2_base_pair_term(self.use_pbc, cutoff, force_group)
+            force = functional_terms.dna_3spn2_base_pair_term(self.use_pbc, cutoff, force_group)
             # add donors and acceptors
             for a1, a2 in zip(donors1['index'].tolist(), donors2['index'].tolist()):
-                force_i.addDonor(a1, a2, -1, parameters)
+                force.addDonor(a1, a2, -1, parameters)
             for a1, a2 in zip(acceptors1['index'].tolist(), acceptors2['index'].tolist()):
-                force_i.addAcceptor(a1, a2, -1)
+                force.addAcceptor(a1, a2, -1)
             # set exclusions
             # for hbond forces, exclusions are added based on donor id and acceptor id, instead of atom id
             donors1['donor_id'] = list(range(len(donors1.index)))
             acceptors1['acceptor_id'] = list(range(len(acceptors1.index)))
             for j in donors1.index:
                 c, r = j[0], j[1]
-                for delta_r in [-2, -1, 1, 2]:
+                max_delta_r = 2
+                for delta_r in range(-1*max_delta_r, max_delta_r + 1):
                     k = (c, r + delta_r, base2)
                     if k in acceptors1.index:
-                        force_i.addExclusion(int(donors1.loc[j, 'donor_id']), int(acceptors1.loc[k, 'acceptor_id']))
-            self.system.addForce(force_i)
+                        force.addExclusion(int(donors1.loc[j, 'donor_id']), int(acceptors1.loc[k, 'acceptor_id']))
+            self.system.addForce(force)
     
     def add_dna_cross_stackings(self, cutoff=1.8, force_group=10):
         '''
@@ -370,7 +374,7 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
         dna_atoms = atoms[atoms['resname'].isin(_nucleotides)].copy()
         dna_atoms['group'] = dna_atoms['name'].replace(['A', 'T', 'C', 'G'], 'B')
         dna_atoms = dna_atoms.set_index(['chainID', 'resSeq', 'group'])
-        bases = dna_atoms.loc[pd.IndexSlice[:, :, ['B']]].copy()
+        bases = dna_atoms.loc[pd.IndexSlice[:, :, ['B']], :].copy()
         # define forces
         dict_cross_stackings = {}
         for b in ['A', 'T', 'C', 'G']:
@@ -403,6 +407,8 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
             force = dict_cross_stackings[b]
             donors = bases[bases['index'].isin(donor_dict[b])].copy()
             acceptors = bases[bases['index'].isin(acceptor_dict[b])].copy()
+            if (len(donors.index) == 0) or (len(acceptors.index) == 0):
+                continue
             donors['donor_id'] = list(range(len(donors.index)))
             acceptors['acceptor_id'] = list(range(len(acceptors.index)))
             if self.OpenCLPatch:
@@ -469,7 +475,7 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
         dna_atoms = atoms[atoms['resname'].isin(_nucleotides)].copy()
         dna_atoms['group'] = dna_atoms['name'].replace(['A', 'T', 'C', 'G'], 'B')
         dna_atoms = dna_atoms.set_index(['chainID', 'resSeq', 'group'])
-        bases = dna_atoms.loc[pd.IndexSlice[:, :, ['B']]].copy()
+        bases = dna_atoms.loc[pd.IndexSlice[:, :, ['B']], :].copy()
         # define forces
         dict_cross_stackings = {}
         for b in ['A', 'T', 'C', 'G']:
@@ -504,6 +510,8 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
             force1, force2 = dict_cross_stackings[b]
             donors = bases[bases['index'].isin(donor_dict[b])].copy()
             acceptors = bases[bases['index'].isin(acceptor_dict[b])].copy()
+            if (len(donors.index) == 0) or (len(acceptors.index) == 0):
+                continue
             donors['donor_id'] = list(range(len(donors.index)))
             acceptors['acceptor_id'] = list(range(len(acceptors.index)))
             if self.OpenCLPatch:

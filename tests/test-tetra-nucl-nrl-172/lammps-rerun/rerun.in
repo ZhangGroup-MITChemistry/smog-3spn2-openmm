@@ -89,7 +89,6 @@ thermo              1
 #thermo_style        multi
 thermo_style        custom step pe v_ebp v_ecstk v_eexcl v_dna_ecoul v_nbp c_e_bonds[*] c_e_angles[*] c_e_dihedrals[*] c_e_sbm_pair c_e_lj_debye c_e_lj_debye_vdwl c_e_lj_debye_coul v_e_all_vdwl v_e_all_coul 
 thermo_modify flush yes
-thermo_modify flush yes
 
 #velocity            all create ${T} ${random} rot yes mom yes dist gaussian
 
