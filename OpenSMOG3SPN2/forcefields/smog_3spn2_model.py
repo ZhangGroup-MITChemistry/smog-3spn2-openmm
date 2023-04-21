@@ -21,12 +21,12 @@ _nucleotides = ['DA', 'DT', 'DC', 'DG']
 _WC_pair_dict = {'A': 'T', 'T': 'A', 'C': 'G', 'G': 'C'}
 
 class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
-    '''
+    """
     The class for SMOG+3SPN2 model. 
     To ensure this model works properly, please ensure two neighboring ssDNA chains do not share same chainID. 
-    '''
+    """
     def __init__(self, dna_type='B_curved', OpenCLPatch=True, default_parse_config=True):
-        '''
+        """
         Initialize. 
         
         Parameters
@@ -40,7 +40,7 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
         default_parse_config : bool
             Whether to parse the default 3SPN2 configuration file. 
         
-        '''
+        """
         self.atoms = None
         self.dna_exclusions = None
         self.exclusions = None
@@ -56,7 +56,7 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
     
     # rewrite append_mol method as we need to check DNA type consistency when appending new DNA
     def append_mol(self, new_mol, verbose=False):
-        '''
+        """
         The method can append new molecules by concatenating atoms and bonded interaction information saved in dataframes. 
         Please ensure two neighboring chains do not share chainID. 
         
@@ -68,7 +68,7 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
         verbose : bool
             Whether to report the appended attributes. 
         
-        '''
+        """
         if hasattr(new_mol, 'dna_type'):
             # set DNA type
             if hasattr(self, 'dna_type'):
@@ -82,12 +82,12 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
         super().append_mol(new_mol, verbose)
     
     def parse_dna_exclusions(self):
-        '''
+        """
         Parse DNA nonbonded interaction exclusions. 
         Note we parse exclusions here instead of in parser as 3SPN2 involves exclusions between atoms from different chains. 
         The code should be efficient if there are many DNA chains in the system. 
         
-        '''
+        """
         atoms = self.atoms.copy()
         atoms['index'] = list(range(len(atoms.index)))
         new_chainIDs = []
@@ -135,11 +135,11 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
             self.dna_exclusions = pd.DataFrame(columns=['a1', 'a2'])
     
     def parse_all_exclusions(self):
-        '''
+        """
         Parse all the exclusions (including protein exclusions and DNA exclusions). 
         Run this command before adding nonbonded interactions. 
         
-        '''
+        """
         self.parse_dna_exclusions()
         if hasattr(self, 'protein_exclusions'):
             if getattr(self, 'protein_exclusions') is None:
@@ -150,7 +150,7 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
         self.exclusions = exclusions.sort_values(by=['a1', 'a2'], ignore_index=True)
     
     def add_protein_bonds(self, force_group=1):
-        '''
+        """
         Add protein bonds.
         
         Parameters
@@ -158,14 +158,14 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
         force_group : int
             Force group. 
         
-        '''
+        """
         if hasattr(self, 'protein_bonds'):
             print('Add protein bonds.')
             force = functional_terms.harmonic_bond_term(self.protein_bonds, self.use_pbc, force_group)
             self.system.addForce(force)
     
     def add_protein_angles(self, force_group=2):
-        '''
+        """
         Add protein angles.
         
         Parameters
@@ -173,14 +173,14 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
         force_group : int
             Force group. 
         
-        '''
+        """
         if hasattr(self, 'protein_angles'):
             print('Add protein angles.')
             force = functional_terms.harmonic_angle_term(self.protein_angles, self.use_pbc, force_group)
             self.system.addForce(force)
 
     def add_protein_dihedrals(self, force_group=3):
-        '''
+        """
         Add protein dihedrals. 
         
         Parameters
@@ -188,14 +188,14 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
         force_group : int
             Force group. 
         
-        '''
+        """
         if hasattr(self, 'protein_dihedrals'):
             print('Add protein dihedrals.')
             force = functional_terms.periodic_dihedral_term(self.protein_dihedrals, self.use_pbc, force_group)
             self.system.addForce(force)
 
     def add_native_pairs(self, force_group=4):
-        '''
+        """
         Add native pairs. 
         
         Parameters
@@ -203,14 +203,14 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
         force_group : int
             Force group.
         
-        '''
+        """
         if hasattr(self, 'native_pairs'):
             print('Add native pairs.')
             force = functional_terms.native_pair_gaussian_term(self.native_pairs, self.use_pbc, force_group)
             self.system.addForce(force)
     
     def add_dna_bonds(self, force_group=5):
-        '''
+        """
         Add DNA bonds.
         
         Parameters
@@ -218,14 +218,14 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
         force_group : int
             Force group.
         
-        '''
+        """
         if hasattr(self, 'dna_bonds'):
             print('Add DNA bonds.')
             force = functional_terms.class2_bond_term(self.dna_bonds, self.use_pbc, force_group)
             self.system.addForce(force)
         
     def add_dna_angles(self, force_group=6):
-        '''
+        """
         Add DNA angles. 
         
         Parameters
@@ -233,14 +233,14 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
         force_group : int
             Force group.
         
-        '''
+        """
         if hasattr(self, 'dna_angles'):
             print('Add DNA angles.')
             force = functional_terms.harmonic_angle_term(self.dna_angles, self.use_pbc, force_group)
             self.system.addForce(force)
         
     def add_dna_stackings(self, force_group=7):
-        '''
+        """
         Add DNA stackings. 
         
         Parameters
@@ -248,14 +248,14 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
         force_group : int
             Force group.
         
-        '''
+        """
         if hasattr(self, 'dna_stackings'):
             print('Add DNA stackings.')
             force = functional_terms.dna_3spn2_stacking_term(self.dna_stackings, self.use_pbc, force_group)
             self.system.addForce(force)
     
     def add_dna_dihedrals(self, force_group=8):
-        '''
+        """
         Add DNA dihedrals.
         
         Parameters
@@ -263,14 +263,14 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
         force_group : int
             Force group.
         
-        '''
+        """
         if hasattr(self, 'dna_dihedrals'):
             print('Add DNA dihedrals.')
             force = functional_terms.dna_3spn2_dihedral_term(self.dna_dihedrals, self.use_pbc, force_group)
             self.system.addForce(force)
     
     def add_dna_base_pairs(self, cutoff=1.8, force_group=9):
-        '''
+        """
         Add DNA base pair potentials. 
         
         Please ensure two neighboring chains in self.atoms do not share the same chainID, so that different chains can be distinguished properly. 
@@ -283,7 +283,7 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
         force_group : int
             Force group.
         
-        '''
+        """
         print('Add DNA base pairs.')
         pair_definition = self.pair_definition[self.pair_definition['DNA'] == self.dna_type]
         atoms = self.atoms.copy()
@@ -336,7 +336,7 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
             self.system.addForce(force)
     
     def add_dna_cross_stackings(self, cutoff=1.8, force_group=10):
-        '''
+        """
         New method for adding DNA cross stacking potentials. This method should be faster. 
         
         The previous method is slow because each (B1, S1, B2) atom group acts as both donor and acceptor. 
@@ -355,7 +355,7 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
         force_group : int
             Force group.
         
-        '''
+        """
         print('Add DNA cross stackings.')
         cross_definition = self.cross_definition[self.cross_definition['DNA'] == self.dna_type].copy()
         cross_definition = cross_definition.set_index(['Base_d1', 'Base_a1', 'Base_a3'])
@@ -438,7 +438,7 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
         
     
     def legacy_add_dna_cross_stackings(self, cutoff=1.8, force_group=10):
-        '''
+        """
         Add DNA cross stacking potentials. 
         
         This is the old method, which is slower, because each (B1, S1, B2) atom group acts as both donors and acceptors. 
@@ -456,7 +456,7 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
         force_group : int
             Force group.
         
-        '''
+        """
         print('Add DNA cross stackings.')
         cross_definition = self.cross_definition[self.cross_definition['DNA'] == self.dna_type].copy()
         cross_definition = cross_definition.set_index(['Base_d1', 'Base_a1', 'Base_a3'])
@@ -544,7 +544,7 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
     
     def add_all_vdwl(self, param_PP_MJ_path=f'{__location__}/parameters/pp_MJ.csv', cutoff_PD=1.425*unit.nanometer, 
                      force_group=11):
-        '''
+        """
         Add all the nonbonded Van der Waals interactions. 
         
         CG atom type 0-19 for amino acids. CG atom type 20-25 for DNA atoms. 
@@ -560,7 +560,7 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
         force_group : int
             Force group. 
         
-        '''
+        """
         print('Add all the nonbonded contact interactions.')
         param_PP_MJ = pd.read_csv(param_PP_MJ_path)
         force = functional_terms.all_smog_MJ_3spn2_term(self, param_PP_MJ, cutoff_PD, force_group)
@@ -569,7 +569,7 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
     def add_all_elec(self, salt_conc=150*unit.millimolar, temperature=300*unit.kelvin, 
                      elec_DD_charge_scale=0.6, cutoff_DD=5*unit.nanometer, cutoff_PP_PD=3.141504539*unit.nanometer, 
                      dielectric_PP_PD=78, force_group=12):
-        '''
+        """
         Add all the electrostatic interactions. 
         
         Parameters
@@ -595,7 +595,7 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
         force_group : int
             Force group. 
         
-        '''
+        """
         print('Add all the electrostatic interactions.')
         force = functional_terms.all_smog_3spn2_elec_term(self, salt_conc, temperature, elec_DD_charge_scale, 
                                                           cutoff_DD, cutoff_PP_PD, dielectric_PP_PD, force_group)

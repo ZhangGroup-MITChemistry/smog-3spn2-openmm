@@ -84,7 +84,7 @@ columns = ['protein bond', 'protein angle', 'protein dihedral', 'native pair', '
            'all vdwl', 'all elec']
 df_energies_kj = pd.DataFrame(columns=columns)
 df_energies_kcal = pd.DataFrame(columns=columns)
-for i in range(0, n_frames):
+for i in range(1, n_frames):
     # since lammps gives strange results for the 0th snapshot, we do not compute energy for that one
     simulation.context.setPositions(traj.xyz[i])
     row_kj, row_kcal = [], []

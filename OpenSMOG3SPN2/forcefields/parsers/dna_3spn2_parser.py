@@ -34,27 +34,27 @@ _degree_to_rad = np.pi/180
 _kcal_to_kj = 4.184
 _angstrom_to_nanometer = 0.1
 
-'''
+"""
 Open3SPN2 was originally developed by Carlos Bueno. 
 Most code is adapted from the original Open3SPN2. 
-'''
+"""
 
 
 class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
-    '''
+    """
     DNA 3SPN2 parser. 
     For B-curved DNA, the parser works best for a single strand ssDNA or WC-paired dsDNA. 
     Please ensure the parsed DNA has unique chainID for each chain. 
-    '''
+    """
     def __init__(self, cg_pdb, dna_type='B_curved'):
-        '''
+        """
         Initialize. 
-        '''
+        """
         self.atoms = helper_functions.parse_pdb(cg_pdb)
         self.dna_type = dna_type
     
     def build_x3dna_template(self, temp_name='dna'):
-        '''
+        """
         Build template DNA structure with x3dna. 
         We do not need to specify whether to use PSB order, since template atom order is aligned with self.atoms.
         If self.atoms is one dsDNA molecule and the target sequence is W-C paired, x3dna input sequence is the sequence of the first ssDNA. Else, use the full sequence of the DNA as x3dna input sequence. 
@@ -69,7 +69,7 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
         temp_atoms : pd.DataFrame
             X3DNA built CG DNA template structure. 
         
-        '''
+        """
         # get sequence
         sequence_list = self.get_sequence_list()
         n_chains = len(sequence_list)
@@ -182,7 +182,7 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
         return dna_temp_atoms
     
     def parse_mol(self, temp_from_x3dna=True, temp_name='dna', input_temp=None):
-        '''
+        """
         Parse molecule with given template. 
         
         Parameters
@@ -196,7 +196,7 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
         input_temp : None or pd.DataFrame
             Additional input template. Use input_temp only `if (not ((self.dna_type == 'B_curved') and temp_from_x3dna)) and (input_temp is not None)`. 
         
-        '''
+        """
         # parse configuration file if not yet
         if not hasattr(self, 'particle_definition'):
             self.parse_config_file()
@@ -365,7 +365,7 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
     
     @staticmethod
     def aa_to_cg(aa_atoms, PSB_order=True):
-        '''
+        """
         Convert DNA all-atom structure to CG structure. 
         Both input and output structures are saved as pandas dataframe. 
         Notably, this function gives each residue in the output CG model a unique resSeq (index starts from 0). 
@@ -385,7 +385,7 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
         cg_atoms : pd.DataFrame
             Output CG structure. 
         
-        '''
+        """
         columns = ['recname', 'serial', 'name', 'altLoc',
                    'resname', 'chainID', 'resSeq', 'iCode',
                    'x', 'y', 'z', 'occupancy', 'tempFactor',
@@ -465,7 +465,7 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
     
     @staticmethod
     def get_sequence_list_from_cg_atoms(cg_atoms):
-        '''
+        """
         Get all ssDNA sequence from CG atoms as a list. 
         Since we use `groupby` to group by chainID, each chain has to possess a unique chainID. 
         
@@ -479,7 +479,7 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
         sequence_list : list
             A list including multiple strings. Each string is the sequence of one chain. 
         
-        '''
+        """
         cg_atoms = cg_atoms[cg_atoms['resname'].isin(_nucleotides)].copy()
         sequence_list = []
         for c, chain in cg_atoms.groupby('chainID'):
@@ -490,7 +490,7 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
         return sequence_list
 
     def get_sequence_list(self):
-        '''
+        """
         Get all ssDNA sequence from self.atoms as a list. 
         Note each chain has to possess a unique chainID. 
         
@@ -499,12 +499,12 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
         sequence_list : list
             A list including multiple strings. Each string is the sequence of one chain. 
         
-        '''
+        """
         sequence_list = self.get_sequence_list_from_cg_atoms(self.atoms)
         return sequence_list
     
     def get_sequence(self):
-        '''
+        """
         Get all ssDNA sequence from CG atoms as a string. 
         Note each chain has to possess a unique chainID. 
         
@@ -513,14 +513,14 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
         sequence : str
             DNA sequence. 
             
-        '''
+        """
         sequence_list = self.get_sequence_list()
         sequence = ''.join(sequence_list)
         return sequence
     
     @staticmethod
     def change_sequence(cg_atoms, sequence):
-        '''
+        """
         Change DNA sequence. 
         Note sequence includes the sequence of all the ssDNA chains. 
         
@@ -537,7 +537,7 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
         new_cg_atoms : pd.DataFrame
             DNA CG structure with the new sequence. 
         
-        '''
+        """
         new_cg_atoms = cg_atoms[cg_atoms['resname'].isin(_nucleotides)].copy()
         # ensure the new sequence has correct length
         assert len(new_cg_atoms[new_cg_atoms['name'].isin(['A', 'T', 'C', 'G'])]) == len(sequence)
@@ -555,7 +555,7 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
     @classmethod
     def from_atomistic_pdb(cls, atomistic_pdb, cg_pdb, PSB_order=True, new_sequence=None, dna_type='B_curved', 
                            default_parse=True, temp_from_x3dna=True, temp_name='dna', input_temp=None):
-        '''
+        """
         Create object from atomistic pdb file. 
         Ensure each chain in input pdb_file has unique chainID. 
         If a new sequence is provided, then the CG DNA topology is from input pdb file, but using the new sequence. 
@@ -591,7 +591,7 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
         input_temp : None or pd.DataFrame
             Additional input template.
         
-        '''
+        """
         atomistic_atoms = helper_functions.fix_pdb(atomistic_pdb) # fix pdb
         cg_atoms = cls.aa_to_cg(atomistic_atoms, PSB_order=PSB_order) # do coarse-graining
         if new_sequence is not None:

@@ -12,7 +12,7 @@ _kcal_to_kj = 4.184
 _angstrom_to_nanometer = 0.1
 
 class Mixin3SPN2ConfigParser(object):
-    '''
+    """
     Define a class for 3SPN2 configuration file parser. 
     
     Make this an individual class is convenient for other classes to inherit. 
@@ -20,18 +20,18 @@ class Mixin3SPN2ConfigParser(object):
     This class can load parameters from 3SPN2.conf and automatically convert the units. 
     
     Also this class load all the parameters as pandas dataframes, and it is easy for user to modify the parameters. 
-    '''
+    """
     def parse_config_file(self, config_file=dna_3SPN2_conf):
-        '''
+        """
         Parse configuration file. The parameters are loaded as pandas dataframes. 
         The method automatically loads parameters from configuration file and convert the units. 
         The converted units are consistent with the workflow. 
-        '''
+        """
         
         def parse_row(row):
-            '''
+            """
             Parse one row from the configuration. 
-            '''
+            """
             values = row.split('#')[0].split() # remove comments
             for i in range(len(values)):
                 values[i] = values[i].strip()

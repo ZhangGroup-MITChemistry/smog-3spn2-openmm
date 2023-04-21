@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import mdtraj
-import MDAnalysis
+from MDAnalysis.lib.nsgrid import FastNS
 import networkx as nx
 import math
 import sys
@@ -65,7 +65,7 @@ def get_neighbor_pairs_and_distances(coord, cutoff=0.6, box=None, use_pbc=False)
     
     '''
     if use_pbc:
-        grid_search = MDAnalysis.lib.nsgrid.FastNS(cutoff, coord.astype(np.float32), box.astype(np.float32), use_pbc)
+        grid_search = FastNS(cutoff, coord.astype(np.float32), box.astype(np.float32), use_pbc)
     else:
         x_min, x_max = np.amin(coord[:, 0]), np.amax(coord[:, 0])
         y_min, y_max = np.amin(coord[:, 1]), np.amax(coord[:, 1])
@@ -76,7 +76,7 @@ def get_neighbor_pairs_and_distances(coord, cutoff=0.6, box=None, use_pbc=False)
         ly = max(1.1*(y_max - y_min), 2.1*cutoff)
         lz = max(1.1*(z_max - z_min), 2.1*cutoff)
         pseudo_box = np.array([lx, ly, lz, 90, 90, 90]).astype(np.float32) # build an orthogonal pseudo box
-        grid_search = MDAnalysis.lib.nsgrid.FastNS(cutoff, shifted_coord, pseudo_box, use_pbc)
+        grid_search = FastNS(cutoff, shifted_coord, pseudo_box, use_pbc)
     results = grid_search.self_search()
     neighbor_pairs = results.get_pairs()
     neighbor_pair_distances = results.get_pair_distances()
@@ -135,6 +135,11 @@ def light_is_blocked(d12, d13, d23, r2, r3):
     r3: float or int, non-negative
         The radius of atom3. 
         Require r3 <= d13. 
+    
+    Returns
+    -------
+    flag : bool
+        Whether the light is blocked. 
         
     '''
     assert d12 > 0
@@ -148,9 +153,10 @@ def light_is_blocked(d12, d13, d23, r2, r3):
     theta12 = math.asin(r2/d12)
     theta13 = math.asin(r3/d13)
     if theta12 + theta13 >= angle213:
-        return True
+        flag = True
     else:
-        return False
+        flag = False
+    return flag
 
 
 def find_res_pairs_from_atomistic_pdb(atomistic_pdb, frame=0, radius=0.1, bonded_radius=0.05, cutoff=0.6, box=None, 

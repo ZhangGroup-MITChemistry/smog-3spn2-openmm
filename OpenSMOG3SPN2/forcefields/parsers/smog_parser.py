@@ -27,11 +27,11 @@ _smog_amino_acid_charge_dict = dict(ALA=0.0, ARG=1.0, ASN=0.0, ASP=-1.0, CYS=0.0
 _kcal_to_kj = 4.184
 
 class SMOGParser(object):
-    '''
+    """
     SMOG protein parser.
-    '''
+    """
     def __init__(self, atomistic_pdb, ca_pdb, default_parse=True):
-        '''
+        """
         Initialize a protein with SMOG model. 
         
         Parameters
@@ -45,7 +45,7 @@ class SMOGParser(object):
         default_parse : bool
             Whether to parse with default settings. 
         
-        '''
+        """
         self.atomistic_pdb = atomistic_pdb
         self.pdb = ca_pdb
         self.atoms = helper_functions.parse_pdb(ca_pdb)
@@ -57,7 +57,7 @@ class SMOGParser(object):
 
     @classmethod
     def from_atomistic_pdb(cls, atomistic_pdb, ca_pdb, write_TER=False, default_parse=True):
-        '''
+        """
         Initialize an HPS model protein from atomistic pdb. 
         
         Parameters
@@ -74,12 +74,12 @@ class SMOGParser(object):
         default_parse : bool
             Whether to parse with default settings. 
         
-        '''
+        """
         helper_functions.atomistic_pdb_to_ca_pdb(atomistic_pdb, ca_pdb, write_TER)
         return cls(atomistic_pdb, ca_pdb, default_parse)
     
     def parse_exclusions(self, exclude12=True, exclude13=True, exclude14=True, exclude_native_pairs=True):
-        '''
+        """
         Parse nonbonded exclusions based on bonds, angles, dihedrals, and native pairs.
         
         Parameters
@@ -96,7 +96,7 @@ class SMOGParser(object):
         exclude_native_pairs : bool
             Whether to exclude nonbonded interactions between native pairs. 
         
-        '''
+        """
         exclusions = []
         if exclude12 and hasattr(self, 'protein_bonds'):
             for i, row in self.protein_bonds.iterrows():
@@ -119,7 +119,7 @@ class SMOGParser(object):
                   use_pbc=False, exclude12=True, exclude13=True, exclude14=True, exclude_native_pairs=True, 
                   mass_dict=_smog_amino_acid_mass_dict, charge_dict=_smog_amino_acid_charge_dict, 
                   bonded_energy_scale=2.5):
-        '''
+        """
         Parse molecule.
         
         Parameters
@@ -168,7 +168,7 @@ class SMOGParser(object):
         
         bonded_energy_scale : float or int
             Bonded energy additional scale factor. 
-        '''
+        """
         # set bonds, angles, and dihedrals
         bonds, angles, dihedrals = [], [], []
         n_atoms = len(self.atoms.index)

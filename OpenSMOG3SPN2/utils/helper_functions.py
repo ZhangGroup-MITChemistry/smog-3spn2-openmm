@@ -6,12 +6,12 @@ import simtk.unit as unit
 import sys
 import os
 
-'''
+"""
 Some code is adapted from Open3SPN2. 
 
 Open3SPN2 and OpenAWSEM paper: 
 Lu, Wei, et al. "OpenAWSEM with Open3SPN2: A fast, flexible, and accessible framework for large-scale coarse-grained biomolecular simulations." PLoS computational biology 17.2 (2021): e1008308.
-'''
+"""
 
 _amino_acids = ['ALA', 'ARG', 'ASN', 'ASP', 'CYS',
                 'GLN', 'GLU', 'GLY', 'HIS', 'ILE',
@@ -29,7 +29,7 @@ _WC_pair_dict = {'A': 'T', 'T': 'A', 'C': 'G', 'G': 'C'}
 
 
 def parse_pdb(pdb_file):
-    '''
+    """
     Load pdb file as pandas dataframe.
     
     Parameters
@@ -42,7 +42,7 @@ def parse_pdb(pdb_file):
     pdb_atoms : pd.DataFrame
         A pandas dataframe includes atom information. 
     
-    '''
+    """
     def pdb_line(line):
         return dict(recname=str(line[0:6]).strip(),
                     serial=int(line[6:11]),
@@ -73,7 +73,7 @@ def parse_pdb(pdb_file):
 
 
 def write_pdb(pdb_atoms, pdb_file, write_TER=False):
-    '''
+    """
     Write pandas dataframe to pdb file. 
     
     Parameters
@@ -87,7 +87,7 @@ def write_pdb(pdb_atoms, pdb_file, write_TER=False):
     write_TER : bool
         Whether to write TER between two chains. 
 
-    '''
+    """
     chainID = None
     with open(pdb_file, 'w') as pdb:
         for i, atom in pdb_atoms.iterrows():
@@ -106,7 +106,7 @@ def write_pdb(pdb_atoms, pdb_file, write_TER=False):
 
 
 def atomistic_pdb_to_ca_pdb(atomistic_pdb, ca_pdb, write_TER=False):
-    '''
+    """
     Convert atomistic pdb to protein CA pdb. 
     
     Parameters
@@ -120,7 +120,7 @@ def atomistic_pdb_to_ca_pdb(atomistic_pdb, ca_pdb, write_TER=False):
     write_TER : bool
         Whether to write TER between two chains. 
     
-    '''
+    """
     atomistic_pdb_atoms = parse_pdb(atomistic_pdb)
     ca_pdb_atoms = pd.DataFrame(columns=atomistic_pdb_atoms.columns)
     for i, row in atomistic_pdb_atoms.iterrows():
@@ -132,7 +132,7 @@ def atomistic_pdb_to_ca_pdb(atomistic_pdb, ca_pdb, write_TER=False):
     
 
 def atomistic_pdb_to_nucleotide_pdb(atomistic_pdb, cg_nucleotide_pdb, write_TER=False):
-    '''
+    """
     Convert atomistic pdb to DNA nucleotide pdb (i.e. one CG bead per nucleotide). 
     The position of each CG nucleotide bead is the geometric center of all the nucleotide atoms in the pdb.
     
@@ -147,7 +147,7 @@ def atomistic_pdb_to_nucleotide_pdb(atomistic_pdb, cg_nucleotide_pdb, write_TER=
     write_TER : bool
         Whether to write TER between two chains. 
     
-    '''
+    """
     atomistic_pdb_atoms = parse_pdb(atomistic_pdb)
     atomistic_pdb_atoms = atomistic_pdb_atoms.loc[atomistic_pdb_atoms['resname'].isin(_nucleotides)].copy()
     atomistic_pdb_atoms.index = list(range(len(atomistic_pdb_atoms.index)))
@@ -167,7 +167,7 @@ def atomistic_pdb_to_nucleotide_pdb(atomistic_pdb, cg_nucleotide_pdb, write_TER=
 
 
 def build_straight_CA_chain(sequence, r0=0.38):
-    '''
+    """
     Build a straight portein CA atom chain with given sequence. 
     
     Parameters
@@ -183,7 +183,7 @@ def build_straight_CA_chain(sequence, r0=0.38):
     df_atoms : pd.DataFrame
         A pandas dataframe includes atom information. 
     
-    '''
+    """
     n_atoms = len(sequence)
     data = []
     for i in range(n_atoms):
@@ -204,7 +204,7 @@ def build_straight_CA_chain(sequence, r0=0.38):
 
 
 def make_mol_whole(coord, box_a, box_b, box_c):
-    '''
+    """
     Use this function to make the molecule whole. 
     This is useful to recover the whole molecule if it is split by box boundary. 
     The position of the first atom is kept. 
@@ -229,7 +229,7 @@ def make_mol_whole(coord, box_a, box_b, box_c):
     new_coord : np.ndarray, shape = (n_atoms, 3)
         Output atom coordinates. 
     
-    '''
+    """
     n_atoms = coord.shape[0]
     new_coord = np.zeros((n_atoms, 3))
     for i in range(n_atoms):
@@ -257,7 +257,7 @@ def make_mol_whole(coord, box_a, box_b, box_c):
                 
 
 def move_atoms_to_closest_pbc_image(coord, ref_point, box_a, box_b, box_c):
-    '''
+    """
     Move the atom coordinates to the periodic image closest to ref_point. 
     
     Parameters
@@ -282,7 +282,7 @@ def move_atoms_to_closest_pbc_image(coord, ref_point, box_a, box_b, box_c):
     new_coord : np.ndarray, shape = (n_atoms, 3)
         Output atom coordinates. 
     
-    '''
+    """
     n_atoms = coord.shape[0]
     new_coord = np.zeros((n_atoms, 3))
     for i in range(n_atoms):
@@ -305,7 +305,7 @@ def move_atoms_to_closest_pbc_image(coord, ref_point, box_a, box_b, box_c):
         
 
 def compute_rg(coord, mass):
-    '''
+    """
     Compute radius of gyration.
     
     Parameters
@@ -321,7 +321,7 @@ def compute_rg(coord, mass):
     rg : float
         Radius of gyration. 
     
-    '''
+    """
     weights = mass/np.sum(mass)
     r_COM = np.average(coord, axis=0, weights=weights)
     rg_square = np.average(np.sum((coord - r_COM)**2, axis=1), weights=weights)
@@ -330,7 +330,7 @@ def compute_rg(coord, mass):
 
 
 def fix_pdb(pdb_file):
-    '''
+    """
     Fix pdb file with pdbfixer. The fixed structure is output as pandas dataframe. 
     This function is adapted from open3SPN2.
     
@@ -344,7 +344,7 @@ def fix_pdb(pdb_file):
     atoms : pd.DataFrame
         Output fixed structure. 
 
-    '''
+    """
     fixer = pdbfixer.PDBFixer(filename=pdb_file)
     fixer.findMissingResidues()
     chains = list(fixer.topology.chains())
@@ -381,7 +381,7 @@ def fix_pdb(pdb_file):
 
 
 def get_WC_paired_seq(sequence):
-    '''
+    """
     Get WC-paired sequence. 
     
     Parameters
@@ -394,7 +394,7 @@ def get_WC_paired_seq(sequence):
     paired_sequence : str
         W-C paired sequence. 
     
-    '''
+    """
     paired_sequence = ''
     for i in range(len(sequence)):
         paired_sequence += _WC_pair_dict[sequence[i]]

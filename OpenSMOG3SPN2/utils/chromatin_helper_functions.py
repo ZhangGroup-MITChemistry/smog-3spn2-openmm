@@ -3,10 +3,10 @@ import pandas as pd
 import sys
 import os
 
-'''
+"""
 Tools for setting up nucleosome related simulations. 
 For example, we need functions to remove dihedrals of disordered tails. 
-'''
+"""
 
 # histone tails (atom index starts from 1): 1-43, 136-159, 238-257, 353-400, 488-530, 623-646, 725-744, 840-887
 # in openmm, we use index starting from 0
@@ -25,7 +25,7 @@ _n_bp_per_nucl = 147
 
 
 def remove_histone_tail_dihedrals(df_dihedrals):
-    '''
+    """
     Remove histone tail dihedral potentials from a single histone. 
     
     A dihedral potential is removed if at least one atom involved is within histone tail. 
@@ -41,7 +41,7 @@ def remove_histone_tail_dihedrals(df_dihedrals):
     new_df_dihedrals : pd.DataFrame
         New dihedral potential.
     
-    '''
+    """
     new_df_dihedrals = pd.DataFrame(columns=df_dihedrals.columns)
     for i, row in df_dihedrals.iterrows():
         a1 = int(row['a1']) % _n_CA_atoms_per_histone
@@ -54,7 +54,7 @@ def remove_histone_tail_dihedrals(df_dihedrals):
 
 
 def remove_histone_tail_native_pairs_and_exclusions(df_native_pairs, df_exclusions):
-    '''
+    """
     Remove histone tail native pair potentials and corresponding exclusions from a single histone. 
     A native pair potential is removed if at least one atom involved is within histone tail. 
     The corresponding exclusions should also be removed if the native pair is removed.
@@ -77,7 +77,7 @@ def remove_histone_tail_native_pairs_and_exclusions(df_native_pairs, df_exclusio
     new_df_exclusions : pd.DataFrame
         New nonbonded exclusions. 
     
-    '''
+    """
     df1 = df_native_pairs.copy()
     for i, row in df1.iterrows():
         a1 = int(row['a1']) % _n_CA_atoms_per_histone
@@ -96,7 +96,7 @@ def remove_histone_tail_native_pairs_and_exclusions(df_native_pairs, df_exclusio
 
 
 def get_chromatin_rigid_bodies(n_nucl, nrl, n_rigid_bp_per_nucl=73):
-    '''
+    """
     Get chromatin rigid bodies. 
     The chromatin should possess uniform linker length without additional linkers on both ends. 
     
@@ -116,7 +116,7 @@ def get_chromatin_rigid_bodies(n_nucl, nrl, n_rigid_bp_per_nucl=73):
     rigid_bodies : list
         List of rigid bodies. 
     
-    '''
+    """
     n_bp = nrl*(n_nucl - 1) + _n_bp_per_nucl
     assert n_rigid_bp_per_nucl > 0
     n_CA_atoms = n_nucl*_n_CA_atoms_per_histone
