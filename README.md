@@ -24,3 +24,13 @@ We may combine our OpenSMOG3SPN2 into OpenABC in the future.
 
 Our implementation is intended to be matched with our LAMMPS implementation. Note that in LAMMPS implementation, we keep exclude 1-4 atom pairs from nonbonded interactions even if dihedral potentials are removed (e.g. we removed histone tail dihedrals), while we do not exclude nonbonded interactions between native pair atoms. That is to say, in LAMMPS implementation, the nonbonded exclusion list is composed of all the 1-2, 1-3, and 1-4 pairs. 
 
+## Citations
+
+If you found this useful, please consider citing the following papers: 
+
+*Open3SPN2*: Lu, Wei, et al. "OpenAWSEM with Open3SPN2: A fast, flexible, and accessible framework for large-scale coarse-grained biomolecular simulations." PLoS computational biology 17.2 (2021): e1008308.
+
+*OpenSMOG*: de Oliveira Jr, Antonio B., et al. "SMOG 2 and OpenSMOG: Extending the limits of structure‐based models." Protein Science 31.1 (2022): 158-172.
+
+*OpenABC*: Liu, Shuming, et al. "OpenABC Enables Flexible, Simplified, and Efficient GPU Accelerated Simulations of Biomolecular Condensates." doi: https://doi.org/10.1101/2023.04.19.537533
+
