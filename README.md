@@ -20,6 +20,10 @@ Our implementation has the following advantages:
 
 We may combine our OpenSMOG3SPN2 into OpenABC in the future. 
 
+## Manual
+
+Manual is at: <https://zhanggroup-mitchemistry.github.io/smog-3spn2-openmm/>
+
 ## Notes
 
 Our implementation is intended to be matched with our LAMMPS implementation. Note that in LAMMPS implementation, we keep exclude 1-4 atom pairs from nonbonded interactions even if dihedral potentials are removed (e.g. we removed histone tail dihedrals), while we do not exclude nonbonded interactions between native pair atoms. That is to say, in LAMMPS implementation, the nonbonded exclusion list is composed of all the 1-2, 1-3, and 1-4 pairs. 
