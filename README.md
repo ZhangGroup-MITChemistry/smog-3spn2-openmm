@@ -28,6 +28,8 @@ Manual is at: <https://zhanggroup-mitchemistry.github.io/smog-3spn2-openmm/>
 
 Our implementation is intended to be matched with our LAMMPS implementation. Note that in LAMMPS implementation, we keep exclude 1-4 atom pairs from nonbonded interactions even if dihedral potentials are removed (e.g. we removed histone tail dihedrals), while we do not exclude nonbonded interactions between native pair atoms. That is to say, in LAMMPS implementation, the nonbonded exclusion list is composed of all the 1-2, 1-3, and 1-4 pairs. 
 
+We have only compared 3SPN2 "B_curved" DNA type energy with LAMMPS, while A and B-DNA are not compared with LAMMPS. Meanwhile, we only compare "OpenCLPatch" as True mode.
+
 ## Citations
 
 If you found this useful, please consider citing the following papers: 
