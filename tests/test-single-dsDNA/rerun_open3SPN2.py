@@ -27,8 +27,8 @@ dsDNA.dihedrals.round(6).to_csv(f'open3SPN2_{dna_type}_dna_dihedrals.csv', index
 s = open3SPN2.System(dsDNA, periodicBox=[box_a, box_b, box_c])
 s.add3SPN2forces(verbose=True)
     
-with open(f'open3SPN2_{dna_type}_system.xml', 'w') as f:
-    f.write(mm.XmlSerializer.serialize(s._wrapped_system))
+#with open(f'open3SPN2_{dna_type}_system.xml', 'w') as f:
+#    f.write(mm.XmlSerializer.serialize(s._wrapped_system))
 
 # force group 6-13 for DNA bond, angle, stacking, dihedral, base pair, cross stacking, exclusion, and electrostatics
 traj = mdtraj.load_dcd('traj.dcd', 'start.pdb')

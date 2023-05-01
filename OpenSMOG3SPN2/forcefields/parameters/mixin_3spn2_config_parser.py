@@ -19,7 +19,7 @@ class Mixin3SPN2ConfigParser(object):
     
     This class can load parameters from 3SPN2.conf and automatically convert the units. 
     
-    Also this class load all the parameters as pandas dataframes, and it is easy for user to modify the parameters. 
+    Also this class loads all the parameters as pandas dataframes, and it is easy for user to modify the parameters. 
     """
     def parse_config_file(self, config_file=dna_3SPN2_conf):
         """
@@ -79,10 +79,15 @@ class Mixin3SPN2ConfigParser(object):
         self.bond_definition = self.bond_definition.rename(columns={'Kb2': 'k_bond_2', 
                                                                     'Kb3': 'k_bond_3', 
                                                                     'Kb4': 'k_bond_4'})
+        flag = (self.bond_definition['DNA'] == 'B_curved')
+        self.bond_definition.loc[flag, 'r0'] = ''
         # angle definition
         self.angle_definition['k_angle'] = self.angle_definition['epsilon']*2
         self.angle_definition = self.angle_definition.rename(columns={'t0': 'theta0'})
-        self.angle_definition['theta0'] *= _degree_to_rad
+        flag1 = (self.angle_definition['DNA'].isin(['A', 'B']))
+        flag2 = (self.angle_definition['DNA'] == 'B_curved')
+        self.angle_definition.loc[flag1, 'theta0'] *= _degree_to_rad
+        self.angle_definition.loc[flag2, 'theta0'] = ''
         # stacking definition
         self.stacking_definition['epsilon'] *= _kcal_to_kj
         self.stacking_definition['sigma'] *= _angstrom_to_nanometer
@@ -92,8 +97,12 @@ class Mixin3SPN2ConfigParser(object):
         # dihedral definition
         self.dihedral_definition['K_dihedral'] *= _kcal_to_kj
         self.dihedral_definition['K_gaussian'] *= _kcal_to_kj
-        self.dihedral_definition['theta0'] = _degree_to_rad*(self.dihedral_definition['t0'] + 180)
-        self.dihedral_definition = self.dihedral_definition.drop(columns=['t0'])
+        self.dihedral_definition = self.dihedral_definition.rename(columns={'t0': 'theta0'})
+        flag1 = (self.dihedral_definition['DNA'].isin(['A', 'B']))
+        flag2 = (self.dihedral_definition['DNA'] == 'B_curved')
+        x = self.dihedral_definition.loc[flag1, 'theta0']
+        self.dihedral_definition.loc[flag1, 'theta0'] = _degree_to_rad*(x + 180)
+        self.dihedral_definition.loc[flag2, 'theta0'] = ''
         # base pair definition
         self.pair_definition['torsion'] *= _degree_to_rad
         self.pair_definition['sigma'] *= _angstrom_to_nanometer
