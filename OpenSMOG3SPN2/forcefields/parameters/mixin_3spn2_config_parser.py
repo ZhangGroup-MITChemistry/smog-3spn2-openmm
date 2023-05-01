@@ -92,8 +92,8 @@ class Mixin3SPN2ConfigParser(object):
         # dihedral definition
         self.dihedral_definition['K_dihedral'] *= _kcal_to_kj
         self.dihedral_definition['K_gaussian'] *= _kcal_to_kj
-        self.dihedral_definition = self.dihedral_definition.rename(columns={'t0': 'theta0'})
-        self.dihedral_definition['theta0'] *= _degree_to_rad
+        self.dihedral_definition['theta0'] = _degree_to_rad*(self.dihedral_definition['t0'] + 180)
+        self.dihedral_definition = self.dihedral_definition.drop(columns=['t0'])
         # base pair definition
         self.pair_definition['torsion'] *= _degree_to_rad
         self.pair_definition['sigma'] *= _angstrom_to_nanometer

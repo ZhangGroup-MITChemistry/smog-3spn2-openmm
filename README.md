@@ -14,9 +14,9 @@ Our implementation has the following advantages:
 
 (2) Protein-DNA nonbonded interactions are included, so we can simulate protein-DNA systems. 
 
-(3) It follows OpenABC (a package developed by Zhang group at MIT chemistry) framework, so it is simple to append molecules and many useful functions are included. 
+(3) It follows OpenABC (a package developed by Zhang group at MIT chemistry) framework, so it is simple to append molecules and many useful functions are included. This makes simulating multiple DNA chains much easier. 
 
-(4) We have optimized 3SPN2 code. Especially, we have optimized the code of cross-stacking interactions. This term is the most time consuming part, and after optimization, for a tetranucleosome system, the speed is about 1.3 times faster than before when running on GPU.
+(4) We have optimized 3SPN2 code performance. Especially, we have optimized the code of cross-stacking interactions. This term is the most time consuming part, and after optimization, for a tetranucleosome system, the speed is about 1.3 times faster than before when running on GPU.
 
 We may combine our OpenSMOG3SPN2 into OpenABC in the future. 
 
@@ -28,7 +28,7 @@ Manual is at: <https://zhanggroup-mitchemistry.github.io/smog-3spn2-openmm/>
 
 Our implementation is intended to be matched with our LAMMPS implementation. Note that in LAMMPS implementation, we keep exclude 1-4 atom pairs from nonbonded interactions even if dihedral potentials are removed (e.g. we removed histone tail dihedrals), while we do not exclude nonbonded interactions between native pair atoms. That is to say, in LAMMPS implementation, the nonbonded exclusion list is composed of all the 1-2, 1-3, and 1-4 pairs. 
 
-We have only compared 3SPN2 "B_curved" DNA type energy with LAMMPS, while A and B-DNA are not compared with LAMMPS. Meanwhile, we only compare "OpenCLPatch" as True mode.
+We have only compared 3SPN2 "B_curved" DNA type energy with LAMMPS, while A and B-DNA are not compared with LAMMPS. Meanwhile, we only compare "OpenCLPatch" as True mode. A-DNA and B-DNA results are compared with open3SPN2 results. 
 
 ## Citations
 
