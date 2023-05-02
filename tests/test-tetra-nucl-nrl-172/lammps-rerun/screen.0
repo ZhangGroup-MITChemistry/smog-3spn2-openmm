@@ -48,10 +48,10 @@ Step PotEng v_ebp v_ecstk v_eexcl v_dna_ecoul v_nbp c_e_bonds[1] c_e_bonds[2] c_
        8    53615.188   -1166.2321   -422.90307    48.792229    223.46577          452     25496.98    22053.531    1992.2202    11987.468    818.23748   -3285.3805    65.570278   -5578.0507    1381.4896    2023.9586   -642.46902    2072.7508   -419.00325 
        9    53537.145    -1150.017   -425.74036    45.903469    229.55186          445    25515.448    22061.417    1985.4103    11917.158    795.16422   -3296.5428    65.570276   -5578.0507    1371.8724    2020.4855   -648.61314     2066.389   -419.06128 
       10     53569.81    -1148.649    -425.2833     47.01163    222.75715          446    25513.876    22042.604    1993.4759    11927.421    796.38908   -3284.4222     65.57026   -5578.0507    1397.1105    2025.2145   -628.10398    2072.2261   -405.34683 
-Loop time of 1.79158 on 1 procs for 11 steps with 7872 atoms
+Loop time of 1.68327 on 1 procs for 11 steps with 7872 atoms
 
-Performance: 0.530 ns/day, 45.242 hours/ns, 6.140 timesteps/s
-96.2% CPU use with 1 MPI tasks x no OpenMP threads
+Performance: 0.565 ns/day, 42.507 hours/ns, 6.535 timesteps/s
+98.5% CPU use with 1 MPI tasks x no OpenMP threads
 
 MPI task timing breakdown:
 Section |  min time  |  avg time  |  max time  |%varavg| %total
@@ -62,7 +62,7 @@ Neigh   | 0          | 0          | 0          |   0.0 |  0.00
 Comm    | 0          | 0          | 0          |   0.0 |  0.00
 Output  | 0          | 0          | 0          |   0.0 |  0.00
 Modify  | 0          | 0          | 0          |   0.0 |  0.00
-Other   |            | 1.792      |            |       |100.00
+Other   |            | 1.683      |            |       |100.00
 
 Nlocal:    7872 ave 7872 max 7872 min
 Histogram: 1 0 0 0 0 0 0 0 0 0
@@ -76,4 +76,4 @@ Ave neighs/atom = 311.129
 Ave special neighs/atom = 6.61992
 Neighbor list builds = 0
 Dangerous builds = 0
-Total wall time: 0:00:05
+Total wall time: 0:00:02

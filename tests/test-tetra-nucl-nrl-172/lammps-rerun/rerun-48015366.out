@@ -1,4 +1,4 @@
-job uses node node443
+job uses node node456
 LAMMPS (5 Nov 2016)
 Running on 1 partitions of processors
 getting bdna/curv dists!

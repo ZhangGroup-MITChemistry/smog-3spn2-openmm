@@ -63,5 +63,5 @@ for i in range(traj.xyz.shape[0]):
         energy = state.getPotentialEnergy().value_in_unit(unit.kilocalorie_per_mole)
         row.append(energy)
     df_energies.loc[len(df_energies.index)] = row
-df_energies.round(2).to_csv(f'{dna_type}_energy.csv', index=False)
+df_energies.round(4).to_csv(f'{dna_type}_energy.csv', index=False)
 

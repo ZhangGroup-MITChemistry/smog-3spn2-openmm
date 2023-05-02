@@ -8,3 +8,4 @@ Note the native pairs for each histone found by SMOG are not identical. The good
 
 Important: in LAMMPS, even though we remove dihedrals involving histone tail atoms, and we keep native pairs within histone cores, nonbonded interactions between 1-4 atoms involving histone tail atoms are excluded, and nonbonded interactions between native pair atoms are not excluded!
 
+The dcd file in lammps-rerun/traj.dcd is achieved from 0.5-million-step unbiased NVT trajectory at 300 K with a timestep of 10 fs performed by LAMMPS. The gap between two snapshots are 50 thousand steps.  

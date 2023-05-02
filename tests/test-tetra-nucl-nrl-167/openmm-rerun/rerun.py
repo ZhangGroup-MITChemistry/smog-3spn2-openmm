@@ -64,7 +64,6 @@ tetra_nucl.add_dna_dihedrals(force_group=8)
 tetra_nucl.add_dna_base_pairs(force_group=9)
 tetra_nucl.add_dna_cross_stackings(force_group=10)
 tetra_nucl.parse_all_exclusions()
-#tetra_nucl.exclusions.to_csv('exclusions.csv', index=False)
 tetra_nucl.add_all_vdwl(force_group=11)
 tetra_nucl.add_all_elec(force_group=12)
 #tetra_nucl.save_system('system.xml')
@@ -98,8 +97,6 @@ for i in range(1, n_frames):
     df_energies_kj.loc[len(df_energies_kj.index)] = row_kj
     df_energies_kcal.loc[len(df_energies_kcal.index)] = row_kcal
 
-#df_energies_kj.round(6).to_csv(f'openmm_energy_kj_{platform_name}.csv', index=False)
-#df_energies_kcal.round(6).to_csv(f'openmm_energy_kcal_{platform_name}.csv', index=False)
 df_energies_kj.round(6).to_csv(f'openmm_energy_kj.csv', index=False)
 df_energies_kcal.round(6).to_csv(f'openmm_energy_kcal.csv', index=False)
 

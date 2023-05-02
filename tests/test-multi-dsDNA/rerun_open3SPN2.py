@@ -7,8 +7,8 @@ import simtk.openmm.app as app
 import simtk.unit as unit
 import mdtraj
 
-sys.path.append('/home/gridsan/sliu/my-tools/open3spn2')
-import open3SPN2
+sys.path.append(os.path.abspath('../../modified-open3SPN2'))
+import ff3SPN2
 
 """
 Rerun trajectory with open3SPN2 to compare energy. 
@@ -21,11 +21,10 @@ dna_type = sys.argv[1]
 
 # directly load CG pdb to ensure P-S-B atom order in each nucleotide
 # first load a single dsDNA, then manually combine multiple copies
-dsDNA = open3SPN2.DNA.fromCoarsePDB('../test-single-dsDNA/cg_dna.pdb', dna_type=dna_type) 
+dsDNA = ff3SPN2.DNA.fromCoarsePDB('../test-single-dsDNA/cg_dna.pdb', dna_type=dna_type) 
 dsDNA.periodic = True
-#dsDNA.dihedrals.round(6).to_csv(f'open3SPN2_{dna_type}_dna_dihedrals.csv', index=False)
 
-multi_dsDNA = open3SPN2.DNA(periodic=True)
+multi_dsDNA = ff3SPN2.DNA(periodic=True)
 multi_dsDNA.parseConfigurationFile()
 multi_dsDNA.DNAtype = dna_type
 single_dsDNA_atoms = dsDNA.atoms.copy()
@@ -54,7 +53,7 @@ for i in ['bonds', 'angles', 'stackings', 'dihedrals']:
     setattr(multi_dsDNA, i, pd.concat(a_list, ignore_index=True))
 
 multi_dsDNA.pdb_file = 'start.pdb'
-s = open3SPN2.System(multi_dsDNA, periodicBox=[box_a, box_b, box_c])
+s = ff3SPN2.System(multi_dsDNA, periodicBox=[box_a, box_b, box_c])
 s.add3SPN2forces(verbose=True)
 
 #with open(f'open3SPN2_{dna_type}_system.xml', 'w') as f:
@@ -75,5 +74,5 @@ for i in range(traj.xyz.shape[0]):
         energy = state.getPotentialEnergy().value_in_unit(unit.kilocalorie_per_mole)
         row.append(energy)
     df_energies.loc[len(df_energies.index)] = row
-df_energies.round(2).to_csv(f'open3SPN2_{dna_type}_energy.csv', index=False)
+df_energies.round(4).to_csv(f'open3SPN2_{dna_type}_energy.csv', index=False)
 

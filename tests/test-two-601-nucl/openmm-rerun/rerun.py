@@ -20,7 +20,7 @@ platform_name = sys.argv[1]
 
 # load single nucleosome
 single_nucl = SMOG3SPN2Model()
-histone = SMOGParser.from_atomistic_pdb('../../test-nucl/pdb-files/histone.pdb', 'histone_CA.pdb', 
+histone = SMOGParser.from_atomistic_pdb('../single-nucl-pdb-files/histone.pdb', 'histone_CA.pdb', 
                                         default_parse=False)
 histone.parse_mol(get_native_pairs=False)
 histone.protein_dihedrals = remove_histone_tail_dihedrals(histone.protein_dihedrals)
@@ -37,7 +37,7 @@ with open('dna_seq.txt', 'r') as f:
     seq1 = f.readlines()[0].strip()
 seq2 = get_WC_paired_seq(seq1)
 target_seq = seq1 + seq2
-dna = DNA3SPN2Parser.from_atomistic_pdb('../../test-nucl/pdb-files/dna.pdb', 'cg_dna.pdb', new_sequence=target_seq)
+dna = DNA3SPN2Parser.from_atomistic_pdb('../single-nucl-pdb-files/dna.pdb', 'cg_dna.pdb', new_sequence=target_seq)
 single_nucl.append_mol(dna)
 single_nucl.atoms_to_pdb('cg_nucl.pdb') # write pdb of single nucleosome
 
@@ -51,7 +51,7 @@ insert_molecules('cg_nucl.pdb', 'two_cg_nucl.pdb', n_mol=n_nucl, box=[box_a, box
 
 top = app.PDBFile('two_cg_nucl.pdb').getTopology()
 init_coord = app.PDBFile('two_cg_nucl.pdb').getPositions()
-two_nucl.create_system(top, box_a=200, box_b=200, box_c=200)
+two_nucl.create_system(top, box_a=box_a, box_b=box_b, box_c=box_c)
 two_nucl.add_protein_bonds(force_group=1)
 two_nucl.add_protein_angles(force_group=2)
 two_nucl.add_protein_dihedrals(force_group=3)
