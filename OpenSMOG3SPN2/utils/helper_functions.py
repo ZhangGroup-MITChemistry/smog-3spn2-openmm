@@ -359,7 +359,7 @@ def fix_pdb(pdb_file):
     fixer.removeHeterogens(keepWater=False)
     fixer.findMissingAtoms()
     fixer.addMissingAtoms()
-    #fixer.addMissingHydrogens(7.0)
+    fixer.addMissingHydrogens(7.0)
     
     columns = ['recname', 'serial', 'name', 'altLoc',
                'resname', 'chainID', 'resSeq', 'iCode',

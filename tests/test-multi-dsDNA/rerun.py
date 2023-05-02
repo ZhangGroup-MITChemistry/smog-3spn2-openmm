@@ -13,8 +13,8 @@ from OpenSMOG3SPN2.forcefields.parsers import DNA3SPN2Parser
 from OpenSMOG3SPN2.forcefields import SMOG3SPN2Model
 from OpenSMOG3SPN2.utils.helper_functions import get_WC_paired_seq
 
-box_a, box_b, box_c = 25.0, 25.0, 25.0
-n_dsDNA = 1
+box_a, box_b, box_c = 20.0, 20.0, 20.0
+n_dsDNA = 5
 dna_type = sys.argv[1]
 
 with open('single_nucl_dna_seq.txt', 'r') as f:
@@ -63,5 +63,5 @@ for i in range(traj.xyz.shape[0]):
         energy = state.getPotentialEnergy().value_in_unit(unit.kilocalorie_per_mole)
         row.append(energy)
     df_energies.loc[len(df_energies.index)] = row
-df_energies.round(4).to_csv(f'{dna_type}_energy.csv', index=False)
+df_energies.round(2).to_csv(f'{dna_type}_energy.csv', index=False)
 

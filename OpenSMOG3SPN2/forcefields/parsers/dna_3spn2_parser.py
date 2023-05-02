@@ -46,11 +46,10 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
     For B-curved DNA, the parser works best for a single strand ssDNA or WC-paired dsDNA. 
     Please ensure the parsed DNA has unique chainID for each chain. 
     """
-    def __init__(self, cg_pdb, dna_type='B_curved'):
+    def __init__(self, dna_type='B_curved'):
         """
         Initialize. 
         """
-        self.atoms = helper_functions.parse_pdb(cg_pdb)
         self.dna_type = dna_type
     
     def build_x3dna_template(self, temp_name='dna'):
@@ -160,7 +159,7 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
         # parse x3dna template
         # from_atomistic_pdb is a class method, so dna_temp is a class object
         dna_temp = self.from_atomistic_pdb(f'{temp_name}_template.pdb', f'cg_{temp_name}_template.pdb', 
-                                               default_parse=False)
+                                           default_parse=False)
         # check sequence
         # the target sequence is equal to the template sequence or the first half of template sequence
         target_sequence = self.get_sequence()
@@ -409,11 +408,10 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
         # view atom mass as weights for computing mean
         mol['element'] = mol['element'].str.strip() # remove white spaces on both ends
         mol['mass'] = mol.element.replace(_atom_masses).astype(float)
-        
         coord = mol[['x', 'y', 'z']].to_numpy()
         weight = mol['mass'].to_numpy()
         mol[['x', 'y', 'z']] = (coord.T*weight).T
-        mol = mol[mol['element'] != 'H']  # Exclude hydrogens
+        mol = mol[mol['element'] != 'H'].copy()  # Exclude hydrogens
         cg_atoms = mol.groupby(['chainID', 'resSeq', 'resname', 'group']).sum(numeric_only=True).reset_index()
         coord = cg_atoms[['x', 'y', 'z']].to_numpy()
         weight = cg_atoms['mass'].to_numpy()
@@ -598,11 +596,13 @@ class DNA3SPN2Parser(Mixin3SPN2ConfigParser):
             print(f'Change to new sequence: {new_sequence}')
             cg_atoms = cls.change_sequence(cg_atoms, new_sequence)
         helper_functions.write_pdb(cg_atoms, cg_pdb)
-        self = cls(cg_pdb, dna_type)
+        self = cls(dna_type)
+        # directly set self.atoms from cg_atoms instead of loading cg_pdb
+        # numerical accuracy is decreased when saving coordinates to pdb
+        self.atoms = cg_atoms
         if default_parse:
             self.parse_config_file()
-            self.parse_mol(temp_from_x3dna=temp_from_x3dna, temp_name=temp_name, 
-                           input_temp=input_temp)
+            self.parse_mol(temp_from_x3dna=temp_from_x3dna, temp_name=temp_name, input_temp=input_temp)
         return self
         
         

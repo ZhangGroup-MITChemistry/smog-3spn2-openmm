@@ -89,14 +89,9 @@ class Mixin3SPN2ConfigParser(object):
         self.angle_definition.loc[flag1, 'theta0'] *= _degree_to_rad
         self.angle_definition.loc[flag2, 'theta0'] = ''
         # stacking definition
-        self.stacking_definition['epsilon'] *= _kcal_to_kj
-        self.stacking_definition['sigma'] *= _angstrom_to_nanometer
         self.stacking_definition = self.stacking_definition.rename(columns={'t0': 'theta0'})
         self.stacking_definition['theta0'] *= _degree_to_rad
-        self.stacking_definition['alpha'] /= _angstrom_to_nanometer
         # dihedral definition
-        self.dihedral_definition['K_dihedral'] *= _kcal_to_kj
-        self.dihedral_definition['K_gaussian'] *= _kcal_to_kj
         self.dihedral_definition = self.dihedral_definition.rename(columns={'t0': 'theta0'})
         flag1 = (self.dihedral_definition['DNA'].isin(['A', 'B']))
         flag2 = (self.dihedral_definition['DNA'] == 'B_curved')

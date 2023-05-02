@@ -1,0 +1,8 @@
+Atomic*pdb
+ref_frames.dat
+cg*pdb
+*template*
+clean.pdb
+*temp*
+*.csv
+

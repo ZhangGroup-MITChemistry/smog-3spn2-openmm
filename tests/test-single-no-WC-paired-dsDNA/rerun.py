@@ -11,7 +11,6 @@ sys.path.append('../..')
 
 from OpenSMOG3SPN2.forcefields.parsers import DNA3SPN2Parser
 from OpenSMOG3SPN2.forcefields import SMOG3SPN2Model
-from OpenSMOG3SPN2.utils.helper_functions import get_WC_paired_seq
 
 box_a, box_b, box_c = 25.0, 25.0, 25.0
 n_dsDNA = 1
@@ -19,12 +18,13 @@ dna_type = sys.argv[1]
 
 with open('single_nucl_dna_seq.txt', 'r') as f:
     seq = f.readlines()[0].strip()
-full_seq = seq + get_WC_paired_seq(seq)
+full_seq = seq + seq # use sequence that is not W-C paired
 
 dna_parser = DNA3SPN2Parser.from_atomistic_pdb('dna.pdb', 'cg_dna.pdb', new_sequence=full_seq, dna_type=dna_type,
                                                temp_name='dna')
-top = app.PDBFile('start.pdb').getTopology()
-init_coord = app.PDBFile('start.pdb').getPositions()
+#dna_parser.temp_atoms.to_csv('cg_dna_template.csv', index=False)
+top = app.PDBFile('cg_dna.pdb').getTopology()
+init_coord = app.PDBFile('cg_dna.pdb').getPositions()
 model = SMOG3SPN2Model(dna_type=dna_type)
 for i in range(n_dsDNA):
     model.append_mol(dna_parser)
@@ -40,8 +40,6 @@ model.parse_all_exclusions()
 model.add_all_vdwl(force_group=11)
 model.add_all_elec(force_group=12, salt_conc=100*unit.millimolar)
 
-#model.dna_dihedrals.round(6).to_csv(f'{dna_type}_dna_dihedrals.csv', index=False)
-
 #with open(f'{dna_type}_system.xml', 'w') as f:
 #    f.write(mm.XmlSerializer.serialize(model.system))
 
@@ -51,7 +49,7 @@ timestep = 10*unit.femtosecond
 integrator = mm.LangevinMiddleIntegrator(temperature, friction_coeff, timestep)
 model.set_simulation(integrator, platform_name='CUDA', init_coord=init_coord)
 
-traj = mdtraj.load_dcd('traj.dcd', 'start.pdb')
+traj = mdtraj.load_dcd('../test-single-dsDNA/traj.dcd', 'cg_dna.pdb')
 columns = ['dna bond', 'dna angle', 'dna stacking', 'dna dihedral', 'dna base pair', 'dna cross stacking', 
            'all vdwl', 'all elec']
 df_energies = pd.DataFrame(columns=columns)
