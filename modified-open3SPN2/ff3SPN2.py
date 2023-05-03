@@ -486,7 +486,7 @@ class DNA(object):
         return self
 
     @staticmethod
-    def CoarseGrain(pdb_table, PSB_order=True):
+    def CoarseGrain(pdb_table):
         """ Selects DNA atoms from a pdb table and returns a table containing only the coarse-grained atoms for 3SPN2"""
         masses = {"H": 1.00794, "C": 12.0107, "N": 14.0067, "O": 15.9994, "P": 30.973762, }
         CG = {"O5\'": 'P', "C5\'": 'S', "C4\'": 'S', "O4\'": 'S', "C3\'": 'S', "O3\'": 'P',
@@ -547,21 +547,9 @@ class DNA(object):
             sel = Coarse[Coarse.chainID == chain]
             drop_list += list(sel[(sel.resSeq == sel.resSeq.min()) & sel['name'].isin(['P'])].index)
         Coarse = Coarse.drop(drop_list)
-        if PSB_order:
-            # change to P-S-B atom order in each nucleotide in order to keep consistent with LAMMPS and OpenSMOG3SPN2
-            unique_cr = Coarse[['chainID', 'resSeq']].drop_duplicates(ignore_index=True).copy()
-            Coarse = Coarse.set_index(['chainID', 'resSeq', 'group'])
-            new_index = []
-            for _i, row in unique_cr.iterrows():
-                c, r = row['chainID'], row['resSeq']
-                j = (c, r, 'P')
-                if j in Coarse.index:
-                    new_index.append(j)
-                new_index += [(c, r, 'S'), (c, r, 'B')]
-            Coarse = Coarse.reindex(new_index, copy=True)
         # Renumber
-        Coarse = Coarse.reset_index()
-        Coarse['serial'] = list(range(len(Coarse.index)))
+        Coarse.index = range(len(Coarse))
+        Coarse['serial'] = Coarse.index
         return Coarse[cols]
 
 #    @classmethod
