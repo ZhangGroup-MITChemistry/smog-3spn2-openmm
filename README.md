@@ -8,7 +8,7 @@ The original implementation of OpenMM 3SPN2 (open3spn2) by Wolynes group: <https
 
 ## Features
 
-Our implementation has the following advantages: 
+Our implementation has the following features: 
 
 (1) All the workflow can be done with Python without requiring SMOG2 outputs, while OpenSMOG requires reading outputs of SMOG2. 
 
@@ -17,6 +17,8 @@ Our implementation has the following advantages:
 (3) It follows OpenABC (a package developed by Zhang group at MIT chemistry) framework, so it is simple to append molecules and many useful functions are included. This makes simulating multiple DNA chains much easier. 
 
 (4) We have optimized 3SPN2 code performance. Especially, we have optimized the code of cross-stacking interactions. This term is the most time consuming part, and after optimization, for a tetranucleosome system, the speed is about 1.3 times faster than before when running on GPU.
+
+(5) The original open3SPN2 code has two modes: OpenCLPatch as True or False. Our implementation here is equivalent to open3SPN2 OpenCLPatch = True mode. 
 
 We may combine our OpenSMOG3SPN2 into OpenABC in the future. 
 

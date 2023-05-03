@@ -25,7 +25,7 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
     The class for SMOG+3SPN2 model. 
     To ensure this model works properly, please ensure two neighboring ssDNA chains do not share same chainID. 
     """
-    def __init__(self, dna_type='B_curved', OpenCLPatch=True, default_parse_config=True):
+    def __init__(self, dna_type='B_curved', default_parse_config=True):
         """
         Initialize. 
         
@@ -33,9 +33,6 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
         ----------
         dna_type : str
             DNA type. This is related to force field parameters. 
-        
-        OpenCLPatch : bool
-            Whether to use OpenCL patch. 
         
         default_parse_config : bool
             Whether to parse the default 3SPN2 configuration file. 
@@ -49,7 +46,6 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
         self.bonded_attr_names = ['protein_bonds', 'protein_angles', 'protein_dihedrals', 'native_pairs', 
                                   'dna_bonds', 'dna_angles', 'dna_stackings', 'dna_dihedrals', 'protein_exclusions']
         self.dna_type = dna_type
-        self.OpenCLPatch = OpenCLPatch
         if default_parse_config:
             # load parameters
             self.parse_config_file()
@@ -116,16 +112,15 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
                             dna_exclusions.append([a1, a2])
 
         # set exclusions between W-C base pairs
-        if self.OpenCLPatch:
-            for b in ['A', 'C']:
-                dna_atom_indices_1 = dna_atoms.loc[dna_atoms['name'] == b, 'index'].tolist()
-                dna_atom_indices_2 = dna_atoms.loc[dna_atoms['name'] == _WC_pair_dict[b], 'index'].tolist()
-                for i in dna_atom_indices_1:
-                    for j in dna_atom_indices_2:
-                        a1, a2 = int(i), int(j)
-                        if a1 > a2:
-                            a1, a2 = a2, a1
-                        dna_exclusions.append([a1, a2])
+        for b in ['A', 'C']:
+            dna_atom_indices_1 = dna_atoms.loc[dna_atoms['name'] == b, 'index'].tolist()
+            dna_atom_indices_2 = dna_atoms.loc[dna_atoms['name'] == _WC_pair_dict[b], 'index'].tolist()
+            for i in dna_atom_indices_1:
+                for j in dna_atom_indices_2:
+                    a1, a2 = int(i), int(j)
+                    if a1 > a2:
+                        a1, a2 = a2, a1
+                    dna_exclusions.append([a1, a2])
         
         if len(dna_exclusions) >= 1:
             dna_exclusions = pd.DataFrame(np.array(dna_exclusions), columns=['a1', 'a2'])
@@ -345,8 +340,6 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
         
         Please ensure two neighboring chains in self.atoms do not share the same chainID, so that different chains can be distinguished properly. 
         
-        The method should be efficient if OpenCLPatch is True. 
-        
         Parameters
         ----------
         cutoff : float or int
@@ -411,29 +404,15 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
                 continue
             donors['donor_id'] = list(range(len(donors.index)))
             acceptors['acceptor_id'] = list(range(len(acceptors.index)))
-            if self.OpenCLPatch:
-                # use more efficient method instead of looping over all the donors and acceptors
-                max_delta_resSeq = 2
-                for i in donors.index:
-                    donor_id = int(donors.loc[i, 'donor_id'])
-                    for delta_resSeq in range(-1*max_delta_resSeq, max_delta_resSeq + 1):
-                        j = (i[0], i[1] + delta_resSeq, 'B')
-                        if j in acceptors.index:
-                            acceptor_id = int(acceptors.loc[j, 'acceptor_id'])
-                            force.addExclusion(donor_id, acceptor_id)
-            else:
-                # loop over all the donors and acceptors
-                # this is inefficient, but usually we set self.OpenCLPatch as True and we do not use this method
-                max_delta_resSeq = 3
-                for i in donors.index:
-                    a1 = int(donors.loc[i, 'index'])
-                    donor_id = int(donors.loc[i, 'donor_id'])
-                    for j in acceptors.index:
-                        a2 = int(acceptors.loc[j, 'index'])
-                        acceptor_id = int(acceptor_id.loc[j, 'acceptor_id'])
-                        if (i[0] == j[0]) and (abs(i[1] - j[1]) <= max_delta_resSeq) or (a1 > a2):
-                            # Question: is this correct? It looks weird that as long as a1 > a2 there is an exclusion. 
-                            force.addExclusion(donor_id, acceptor_id)
+            # use more efficient method instead of looping over all the donors and acceptors
+            max_delta_resSeq = 2
+            for i in donors.index:
+                donor_id = int(donors.loc[i, 'donor_id'])
+                for delta_resSeq in range(-1*max_delta_resSeq, max_delta_resSeq + 1):
+                    j = (i[0], i[1] + delta_resSeq, 'B')
+                    if j in acceptors.index:
+                        acceptor_id = int(acceptors.loc[j, 'acceptor_id'])
+                        force.addExclusion(donor_id, acceptor_id)
             self.system.addForce(force)
         
     
@@ -445,8 +424,6 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
         This method is still correct, so it can be used for verifications. 
         
         Please ensure two neighboring chains in self.atoms do not share the same chainID, so that different chains can be distinguished properly. 
-        
-        The method should be efficient if OpenCLPatch is True. 
         
         Parameters
         ----------
@@ -514,31 +491,16 @@ class SMOG3SPN2Model(CGModel, Mixin3SPN2ConfigParser):
                 continue
             donors['donor_id'] = list(range(len(donors.index)))
             acceptors['acceptor_id'] = list(range(len(acceptors.index)))
-            if self.OpenCLPatch:
-                # use more efficient method instead of looping over all the donors and acceptors
-                max_delta_resSeq = 2
-                for i in donors.index:
-                    donor_id = int(donors.loc[i, 'donor_id'])
-                    for delta_resSeq in range(-1*max_delta_resSeq, max_delta_resSeq + 1):
-                        j = (i[0], i[1] + delta_resSeq, 'B')
-                        if j in acceptors.index:
-                            acceptor_id = int(acceptors.loc[j, 'acceptor_id'])
-                            force1.addExclusion(donor_id, acceptor_id)
-                            force2.addExclusion(acceptor_id, donor_id)
-            else:
-                # loop over all the donors and acceptors
-                # this is inefficient, but usually we set self.OpenCLPatch as True and we do not use this method
-                max_delta_resSeq = 3
-                for i in donors.index:
-                    a1 = int(donors.loc[i, 'index'])
-                    donor_id = int(donors.loc[i, 'donor_id'])
-                    for j in acceptors.index:
-                        a2 = int(acceptors.loc[j, 'index'])
-                        acceptor_id = int(acceptor_id.loc[j, 'acceptor_id'])
-                        if (i[0] == j[0]) and (abs(i[1] - j[1]) <= max_delta_resSeq) or (a1 > a2):
-                            # Question: is this correct? It looks weird that as long as a1 > a2 there is an exclusion. 
-                            force1.addExclusion(donor_id, acceptor_id)
-                            force2.addExclusion(acceptor_id, donor_id)
+            # use more efficient method instead of looping over all the donors and acceptors
+            max_delta_resSeq = 2
+            for i in donors.index:
+                donor_id = int(donors.loc[i, 'donor_id'])
+                for delta_resSeq in range(-1*max_delta_resSeq, max_delta_resSeq + 1):
+                    j = (i[0], i[1] + delta_resSeq, 'B')
+                    if j in acceptors.index:
+                        acceptor_id = int(acceptors.loc[j, 'acceptor_id'])
+                        force1.addExclusion(donor_id, acceptor_id)
+                        force2.addExclusion(acceptor_id, donor_id)
             self.system.addForce(force1)
             self.system.addForce(force2)
     
